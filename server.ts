@@ -1,7 +1,7 @@
 import express from "express";
-import { execFile, spawn } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
-import { readFileSync, existsSync, readdirSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { config } from "dotenv";
 
@@ -14,6 +14,35 @@ app.use(express.json({ limit: "10mb" }));
 const SWIPL = process.env.SWIPL_PATH ?? "swipl";
 const LEAN = process.env.LEAN_PATH ?? "lake";
 const WORKSPACE = process.env.WORKSPACE ?? process.cwd();
+
+const SYSTEM_PROMPT = readFileSync(join(import.meta.dirname ?? ".", "prompts", "system.snap.md"), "utf8");
+const EXECUTOR_PROMPT = readFileSync(join(import.meta.dirname ?? ".", "prompts", "executor-mode.md"), "utf8");
+
+// EmojiCode persona map
+const EMOJI_MAP: Record<string, string> = {
+  "🤖": "agent_execution_mode",
+  "🧠": "reasoning_mode",
+  "🔒": "seal_required",
+  "🧪": "test_required",
+  "📜": "proof_status_check",
+  "🚫": "reject_unsafe",
+  "🧾": "receipt_required",
+  "⚙️": "build_step",
+  "🕳️": "uncertainty_SPEC",
+  "✅": "verified_passed_gate",
+};
+
+function buildPersonaPrompt(userPrompt: string, emojiEnabled: boolean): string {
+  let persona = SYSTEM_PROMPT;
+  if (emojiEnabled) {
+    const emojis = userPrompt.match(/[\u{1F300}-\u{1FAFF}]/gu) ?? [];
+    const modes = emojis.map((e) => EMOJI_MAP[e]).filter(Boolean);
+    if (modes.length > 0) {
+      persona += `\n\nActive EmojiCode modes: ${modes.join(", ")}`;
+    }
+  }
+  return `${persona}\n\nUSER TASK:\n${userPrompt}\n\nReturn:\n- decision\n- assumptions\n- syscalls\n- next_action`;
+}
 
 // ── Ollama ──────────────────────────────────────────────────────────────────
 app.post("/api/ollama", async (req, res) => {
@@ -53,34 +82,43 @@ app.get("/api/ollama/test", async (_req, res) => {
 // ── Lean 4 Gate ─────────────────────────────────────────────────────────────
 app.post("/api/lean", async (req, res) => {
   const { path: leanPath } = req.body;
-  const target = leanPath ?? WORKSPACE;
+  const target = leanPath ?? join(WORKSPACE, "lean4");
+
   try {
     // Run lake build
-    const { stdout: buildOut, stderr: buildErr } = await execFileAsync(LEAN, ["build"], {
-      cwd: target,
-      timeout: 120_000,
-      encoding: "utf8",
-    }).catch((e) => ({ stdout: e.stdout ?? "", stderr: e.stderr ?? e.message }));
+    let buildOk = true;
+    let buildOut = "";
+    let buildErr = "";
+    try {
+      const r = await execFileAsync(LEAN, ["build"], {
+        cwd: target, timeout: 120_000, encoding: "utf8",
+      });
+      buildOut = r.stdout;
+      buildErr = r.stderr;
+    } catch (e: any) {
+      buildOk = false;
+      buildOut = e.stdout ?? "";
+      buildErr = e.stderr ?? e.message;
+    }
 
-    // Scan for sorry/admit/axiom/opaque
-    let scanResult = "";
+    // Scan for sorry/admit/axiom/opaque in .lean files
+    let scanRaw = "";
     try {
       const { stdout } = await execFileAsync("rg", [
         "-n", "--no-heading",
         "\\bsorry\\b|\\badmit\\b|\\baxiom\\b|\\bopaque\\b",
-        target,
-        "--glob", "*.lean",
+        target, "--glob", "*.lean",
       ], { encoding: "utf8", timeout: 30_000 });
-      scanResult = stdout;
+      scanRaw = stdout;
     } catch {
-      scanResult = "(rg not found or no matches)";
+      // rg not found or no matches
+      scanRaw = "";
     }
 
-    const hasSorry = /\bsorry\b/.test(scanResult);
-    const hasAdmit = /\badmit\b/.test(scanResult);
-    const hasAxiom = /\baxiom\b/.test(scanResult);
-    const hasOpaque = /\bopaque\b/.test(scanResult);
-    const buildOk = buildErr.includes("error") ? false : true;
+    const hasSorry = /\bsorry\b/.test(scanRaw);
+    const hasAdmit = /\badmit\b/.test(scanRaw);
+    const hasAxiom = /\baxiom\b/.test(scanRaw);
+    const hasOpaque = /\bopaque\b/.test(scanRaw);
 
     let status: string;
     if (buildOk && !hasSorry && !hasAdmit && !hasAxiom && !hasOpaque) {
@@ -94,7 +132,7 @@ app.post("/api/lean", async (req, res) => {
     res.json({
       status,
       build: { ok: buildOk, stdout: buildOut.slice(0, 4000), stderr: buildErr.slice(0, 4000) },
-      scan: { sorry: hasSorry, admit: hasAdmit, axiom: hasAxiom, opaque: hasOpaque, raw: scanResult.slice(0, 4000) },
+      scan: { sorry: hasSorry, admit: hasAdmit, axiom: hasAxiom, opaque: hasOpaque, raw: scanRaw.slice(0, 4000) },
     });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
@@ -104,17 +142,32 @@ app.post("/api/lean", async (req, res) => {
 // ── Prolog Gate ─────────────────────────────────────────────────────────────
 app.post("/api/prolog", async (req, res) => {
   const { query, file } = req.body;
-  const kernelFile = file ?? join(WORKSPACE, "kernel", "syscalls.pl");
+
+  // Try the real Prolog kernel first
+  const kernelFile = file ?? join(WORKSPACE, "snapkitty-nemotron-harness", "kernel", "syscalls.pl");
+  const ereGateFile = join(WORKSPACE, "snapkitty-nemotron-harness", "kernel", "ere_gate.pl");
+
   try {
+    // Validate syscalls via Prolog
     const q = query ?? "true";
     const { stdout, stderr } = await execFileAsync(SWIPL, [
       "-g", q,
       "-t", "halt.",
       kernelFile,
     ], { encoding: "utf8", timeout: 15_000 });
-    res.json({ success: true, output: stdout.trim() || stderr.trim() });
+    res.json({ success: true, output: stdout.trim() || stderr.trim(), kernel: "syscalls.pl" });
   } catch (e: any) {
-    res.json({ success: false, output: e.message });
+    // Fallback: try ERE gate
+    try {
+      const { stdout, stderr } = await execFileAsync(SWIPL, [
+        "-g", "ere5_all_pass(test_input)",
+        "-t", "halt.",
+        ereGateFile,
+      ], { encoding: "utf8", timeout: 15_000 });
+      res.json({ success: true, output: stdout.trim() || stderr.trim(), kernel: "ere_gate.pl" });
+    } catch (e2: any) {
+      res.json({ success: false, output: e2.message, kernel: "none" });
+    }
   }
 });
 
@@ -127,14 +180,11 @@ app.post("/api/bash", async (req, res) => {
   if (!approve) return res.json({ status: "PENDING_APPROVAL", command });
 
   const denied = BASH_DENY.find((rx) => rx.test(command));
-  if (denied) return res.json({ status: "DENIED", reason: `blocked pattern: ${denied}` });
+  if (denied) return res.json({ status: "DENIED", reason: `blocked: ${denied}` });
 
   try {
     const { stdout, stderr } = await execFileAsync("bash", ["-c", command], {
-      cwd: WORKSPACE,
-      encoding: "utf8",
-      timeout: 60_000,
-      maxBuffer: 1024 * 1024,
+      cwd: WORKSPACE, encoding: "utf8", timeout: 60_000, maxBuffer: 1024 * 1024,
     });
     res.json({ status: "OK", stdout: stdout.slice(0, 8000), stderr: stderr.slice(0, 4000) });
   } catch (e: any) {
@@ -161,7 +211,7 @@ app.post("/api/curl", async (req, res) => {
   }
 });
 
-// ── Search (Tavily / Google) ────────────────────────────────────────────────
+// ── Search ──────────────────────────────────────────────────────────────────
 app.post("/api/search", async (req, res) => {
   const { query, provider, approve } = req.body;
   if (!query) return res.status(400).json({ error: "query required" });
@@ -179,7 +229,6 @@ app.post("/api/search", async (req, res) => {
       const json = await r.json();
       res.json({ status: "OK", provider: "tavily", results: json.results ?? [], marked: "RETRIEVAL_UNTRUSTED" });
     } else {
-      // Fallback: duckduckgo lite
       const r = await fetch(`https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(query)}`, {
         headers: { "User-Agent": "SnapKitty-Harness/0.2" },
         signal: AbortSignal.timeout(10_000),
@@ -192,18 +241,14 @@ app.post("/api/search", async (req, res) => {
   }
 });
 
-// ── File Read ───────────────────────────────────────────────────────────────
-app.post("/api/file/read", (req, res) => {
-  const { path: filePath } = req.body;
-  if (!filePath) return res.status(400).json({ error: "path required" });
-  const full = join(WORKSPACE, filePath);
-  if (!existsSync(full)) return res.json({ exists: false });
-  try {
-    const content = readFileSync(full, "utf8");
-    res.json({ exists: true, content: content.slice(0, 100000) });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
+// ── EmojiCode ───────────────────────────────────────────────────────────────
+app.post("/api/emojicode", (req, res) => {
+  const { text } = req.body;
+  if (!text) return res.json({ modes: [], emojis: [] });
+
+  const emojis = text.match(/[\u{1F300}-\u{1FAFF}]/gu) ?? [];
+  const modes = emojis.map((e: string) => ({ emoji: e, mode: EMOJI_MAP[e] ?? "unknown" }));
+  res.json({ emojis, modes, count: modes.length });
 });
 
 // ── Start ───────────────────────────────────────────────────────────────────

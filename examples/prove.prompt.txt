@@ -1,0 +1,10 @@
+📋 Lean Theorem Classifier
+
+Review each Lean theorem in the project.
+
+For each theorem:
+1. Run <|lean_gate|> to check via lake build + sorry/admit scan
+2. Classify as PROVED, SPEC, or OBLIGATION
+3. Emit <|receipt_seal|> to seal the result
+
+Do not ask questions. Mark uncertainty as SPEC.
