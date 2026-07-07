@@ -16,7 +16,10 @@ const LEAN = process.env.LEAN_PATH ?? "lake";
 const WORKSPACE = process.env.WORKSPACE ?? process.cwd();
 
 const SYSTEM_PROMPT = readFileSync(join(import.meta.dirname ?? ".", "prompts", "system.snap.md"), "utf8");
-const EXECUTOR_PROMPT = readFileSync(join(import.meta.dirname ?? ".", "prompts", "executor-mode.md"), "utf8");
+
+function buildSystemPrompt(userPrompt: string): string {
+  return SYSTEM_PROMPT.replace("{prompt}", userPrompt);
+}
 
 // ── Ollama (chat API with system message) ──────────────────────────────────
 app.post("/api/ollama", async (req, res) => {
@@ -24,14 +27,14 @@ app.post("/api/ollama", async (req, res) => {
   const baseUrl = process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434";
   const modelName = model ?? process.env.OLLAMA_MODEL ?? "nemotron-mini";
   try {
+    const systemMsg = buildSystemPrompt(prompt);
     const r = await fetch(`${baseUrl}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: modelName,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT + "\n\n" + EXECUTOR_PROMPT },
-          { role: "user", content: prompt },
+          { role: "system", content: systemMsg },
         ],
         stream: false,
         options: { temperature: 0, top_p: 0.1, seed: 42 },
