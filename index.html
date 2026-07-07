@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SnapKitty Harness — Policy Enforcement Runtime</title>
+<title>SnapKitty Harness — Constitutional AI</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:monospace;background:#0a0a0a;color:#00ff41;padding:12px}
@@ -11,11 +11,8 @@ h1{font-size:20px;letter-spacing:2px;text-align:center;margin-bottom:4px;border-
 .sub{color:#666;font-size:11px;text-align:center;margin-bottom:16px}
 .panel{border:1px solid #00ff41;border-radius:4px;padding:16px;background:#0d0d0d;margin-bottom:12px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
-label{display:block;font-size:10px;color:#666;margin-bottom:2px;margin-top:8px}
-input,textarea{width:100%;padding:6px 8px;background:#0a0a0a;color:#00ff41;border:1px solid #333;font-family:monospace;font-size:12px}
-textarea{height:80px;resize:vertical}
+textarea{width:100%;padding:6px 8px;background:#0a0a0a;color:#00ff41;border:1px solid #333;font-family:monospace;font-size:12px;height:80px;resize:vertical}
 button{padding:8px 20px;background:#00ff41;color:#0a0a0a;border:none;cursor:pointer;font-family:monospace;font-weight:bold;font-size:12px}
-button:hover{background:#33ff66}
 button.secondary{background:#333;color:#00ff41}
 .mono{font-family:monospace;font-size:11px}
 .small{font-size:10px;color:#666}
@@ -28,188 +25,145 @@ pre{font-size:11px;color:#999;white-space:pre-wrap;max-height:300px;overflow:aut
 </head>
 <body>
 <h1>SNAPKITTY HARNESS</h1>
-<p class="sub">Nemotron is compute. Trust deed is authority. Harness enforces.</p>
+<p class="sub">Constitutional AI. Model generates within constitution. Axioms execute through gates. Receipt seals.</p>
 
 <div class="row">
   <div class="panel">
     <h2>MODEL</h2>
-    <label>Model</label>
-    <input id="modelName" value="nemotron-mini">
+    <div class="mono small">snapkitty-nemotron <span class="green">(constitutional)</span></div>
+    <button class="secondary" style="margin-top:8px" onclick="switchRaw()">vs raw nemotron-mini</button>
   </div>
   <div class="panel">
-    <h2>TRUST DEED</h2>
-    <div class="mono small" id="trustDeedInfo">Loading...</div>
+    <h2>AXIOMS</h2>
+    <div id="axiomStatus" class="mono small">Loading...</div>
   </div>
 </div>
 
 <div class="panel">
-  <h2>PROMPT</h2>
-  <textarea id="promptInput" placeholder="Enter task for nemotron..."></textarea>
+  <textarea id="promptInput" placeholder="Enter task..."></textarea>
   <div style="display:flex;gap:8px;margin-top:8px">
-    <button onclick="runGated()">Run Gated</button>
-    <button class="secondary" onclick="runRaw()">Run Raw</button>
+    <button onclick="runPrompt()">Run</button>
   </div>
 </div>
 
-<!-- RAW NEMOTRON -->
+<div class="row">
+  <div class="panel">
+    <h2>MODEL OUTPUT</h2>
+    <pre id="modelOutput">No output yet.</pre>
+  </div>
+  <div class="panel">
+    <h2>RAW REFERENCE</h2>
+    <pre id="rawOutput">(same prompt, no constitution)</pre>
+  </div>
+</div>
+
 <div class="panel">
-  <h2>RAW NEMOTRON OUTPUT</h2>
-  <pre id="rawOutput">No output yet.</pre>
+  <h2>SYSCALLS & GATE</h2>
+  <div id="syscallResult" class="mono small">No syscalls detected.</div>
 </div>
 
-<!-- NORMALIZED INTENT -->
 <div class="panel">
-  <h2>NORMALIZED INTENT</h2>
-  <div id="normalizedIntent" class="mono small">No normalized output yet.</div>
+  <h2>AXIOM EXECUTION</h2>
+  <div id="axiomResult" class="mono small">Axioms not yet executed.</div>
 </div>
 
-<!-- SYSCALLS DETECTED -->
-<div class="panel">
-  <h2>SYSCALLS DETECTED</h2>
-  <div id="syscallsDetected" class="mono small">No syscalls detected.</div>
-</div>
-
-<!-- TRUST DEED GATE -->
-<div class="panel">
-  <h2>TRUST DEED GATE</h2>
-  <div id="trustDeedGate" class="mono small">No gate decisions yet.</div>
-</div>
-
-<!-- ALLOWED / REJECTED / APPROVAL REQUIRED -->
-<div class="panel">
-  <h2>GATE RESULT</h2>
-  <div id="gateResult" class="mono small">No result yet.</div>
-</div>
-
-<!-- ROUTE SYSCALLS -->
-<div id="routePanel" class="panel" style="display:none">
-  <h2>ROUTING SYSCALLS</h2>
-  <div id="routeResults" class="mono small"></div>
-</div>
-
-<!-- RECEIPT -->
 <div class="panel">
   <h2>RECEIPT</h2>
   <div id="receiptInfo" class="mono small">No receipt yet.</div>
 </div>
 
+<div class="panel">
+  <h2>CONSTITUTION</h2>
+  <div id="constitutionText" class="mono small">Loading...</div>
+</div>
+
 <script>
-async function loadTrustDeed() {
+let rawMode = false;
+
+async function loadConstitution() {
   const r = await fetch("/api/trust-deed");
   const td = await r.json();
-  let html = `<div>Authority: <span class="green">${td.authority}</span></div>`;
-  html += `<div>Model Role: <span class="green">${td.model_role}</span></div>`;
-  html += `<div>Default Mode: <span class="green">${td.default_mode}</span></div>`;
-  html += `<div>Version: <span class="green">${td.version}</span></div>`;
-  document.getElementById("trustDeedInfo").innerHTML = html;
-}
-loadTrustDeed();
+  let html = `<div class="green">Model Role: ${td.model_role}</div>`;
+  html += `<div class="green">Default Mode: ${td.default_mode}</div>`;
+  td.core_rules && Object.entries(td.core_rules).forEach(([k,v]) => {
+    html += `<div>${k}: <span class="${v ? 'green' : 'red'}">${v}</span></div>`;
+  });
+  html += `<div style="margin-top:8px;border-top:1px solid #333;padding-top:8px">`;
+  td.axioms && td.axioms.forEach(a => {
+    html += `<div><span class="amber">${a.id}</span> <span class="grey">${a.description}</span> [${a.gate}]</div>`;
+  });
+  html += `</div>`;
+  document.getElementById("constitutionText").innerHTML = html;
 
-async function runGated() {
+  // Show axiom status
+  let ahtml = `<div>${td.axioms.length} axioms loaded</div>`;
+  td.axioms.forEach(a => {
+    ahtml += `<div><span class="grey">${a.id}</span> → <span class="amber">${a.gate}</span></div>`;
+  });
+  document.getElementById("axiomStatus").innerHTML = ahtml;
+}
+loadConstitution();
+
+function switchRaw() {
+  rawMode = !rawMode;
+  document.querySelector("button.secondary").textContent = rawMode ? "vs constitutional snapkitty-nemotron" : "vs raw nemotron-mini";
+  document.getElementById("modelOutput").textContent = rawMode ? "Switch back to constitutional mode" : "No output yet.";
+}
+
+async function runPrompt() {
   const prompt = document.getElementById("promptInput").value.trim();
   if (!prompt) return;
-  const model = document.getElementById("modelName").value;
-
+  const model = rawMode ? "nemotron-mini" : "snapkitty-nemotron";
+  document.getElementById("modelOutput").textContent = "Running...";
   document.getElementById("rawOutput").textContent = "Running...";
-  document.getElementById("normalizedIntent").innerHTML = "";
-  document.getElementById("syscallsDetected").innerHTML = "";
-  document.getElementById("trustDeedGate").innerHTML = "";
-  document.getElementById("gateResult").innerHTML = "";
 
   try {
-    const r = await fetch("/api/ollama", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, model })
+    // Constitutional model
+    const gated = await fetch("/api/ollama", {
+      method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ prompt, model })
     });
-    const data = await r.json();
+    const data = await gated.json();
+    document.getElementById("modelOutput").textContent = data.raw;
 
-    // 1. Raw nemotron output
-    document.getElementById("rawOutput").textContent = data.raw;
-
-    // 2. Normalized intent
-    let html = "";
-    html += `<div>Decision: <span class="green">${data.normalized.decision.slice(0, 100)}...</span></div>`;
-    html += `<div>Uncertainty: <span class="${data.normalized.uncertainty === 'NONE' ? 'green' : 'amber'}">${data.normalized.uncertainty}</span></div>`;
-    html += `<div>Syscalls: <span class="green">${data.normalized.syscalls.length}</span></div>`;
-    document.getElementById("normalizedIntent").innerHTML = html;
-
-    // 3. Syscalls detected
-    if (data.normalized.syscalls.length === 0) {
-      document.getElementById("syscallsDetected").innerHTML = '<span class="grey">No syscalls in output.</span>';
+    // Show syscalls
+    let shtml = "";
+    if (data.syscalls.detected.length === 0) {
+      shtml = '<span class="grey">No syscall tokens in output.</span>';
     } else {
-      let shtml = "";
-      data.normalized.syscalls.forEach(s => {
-        shtml += `<div><span class="green">&lt;|${s}|&gt;</span></div>`;
+      data.syscalls.gate.forEach((g: any) => {
+        const cls = g.verdict === "ALLOW" ? "green" : g.verdict === "APPROVAL_REQUIRED" ? "amber" : "red";
+        shtml += `<div style="display:flex;justify-content:space-between;margin-bottom:4px">`;
+        shtml += `<span class="green">&lt;|${g.syscall}|&gt;</span> <span class="${cls}">${g.verdict}</span></div>`;
       });
-      document.getElementById("syscallsDetected").innerHTML = shtml;
     }
+    document.getElementById("syscallResult").innerHTML = shtml;
 
-    // 4. Trust deed gate
-    let ghtml = "";
-    data.gate.forEach(g => {
-      const cls = g.status === "ALLOW" ? "green" : g.status === "APPROVAL_REQUIRED" ? "amber" : "red";
-      ghtml += `<div style="display:flex;justify-content:space-between;margin-bottom:4px">`;
-      ghtml += `<span class="green">&lt;|${g.syscall}|&gt;</span>`;
-      ghtml += `<span class="${cls}">${g.status}</span>`;
-      ghtml += `<span class="grey">${g.reason}</span>`;
-      ghtml += `</div>`;
+    // Show axioms
+    let ahtml = `<div>Status: <span class="${data.axioms.allPass ? 'green' : 'red'}">${data.axioms.allPass ? 'ALL PASS' : 'SOME FAILED'}</span></div>`;
+    data.axioms.results.forEach((r: any) => {
+      const cls = r.pass ? "green" : "red";
+      ahtml += `<div><span class="${cls}">${r.pass ? 'PASS' : 'FAIL'}</span> ${r.id} <span class="grey">${r.output}</span></div>`;
     });
-    document.getElementById("trustDeedGate").innerHTML = ghtml;
+    document.getElementById("axiomResult").innerHTML = ahtml;
 
-    // 5. Gate result
-    const cls = data.status === "ACCEPTED" ? "green" : data.status === "APPROVAL_REQUIRED" ? "amber" : "red";
-    document.getElementById("gateResult").innerHTML = `<div>Status: <span class="${cls}" style="font-size:16px;font-weight:bold">${data.status}</span></div>`;
-
-    // 6. Route allowed syscalls
-    const allowed = data.gate.filter(g => g.status === "ALLOW");
-    if (allowed.length > 0) {
-      document.getElementById("routePanel").style.display = "block";
-      let rhtml = "";
-      for (const g of allowed) {
-        rhtml += `<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #222">`;
-        rhtml += `<span class="green">&lt;|${g.syscall}|&gt;</span> Routing...<br>`;
-        const result = await fetch("/api/route", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ syscall: g.syscall, params: { command: prompt, query: prompt, url: prompt } })
-        });
-        const routeResult = await result.json();
-        const statusCls = routeResult.status === "EXECUTED" ? "green" : "red";
-        rhtml += `<span class="${statusCls}">${routeResult.status}</span><br>`;
-        if (routeResult.result) {
-          rhtml += `<pre style="max-height:100px">${JSON.stringify(routeResult.result, null, 2).slice(0, 2000)}</pre>`;
-        }
-        rhtml += `</div>`;
-      }
-      document.getElementById("routeResults").innerHTML = rhtml;
-    }
-
-    // 7. Receipt
+    // Receipt
     document.getElementById("receiptInfo").innerHTML = `
-      <div>ID: <span class="green">${data.receipt.receipt_id}</span></div>
+      <div>ID: <span class="green">${data.receipt.id}</span></div>
       <div>Time: ${data.receipt.timestamp}</div>
-      <div>Trust Deed: <span class="green">${data.receipt.trust_deed_version}</span></div>
-      <div>Status: <span class="${cls}">${data.receipt.status}</span></div>
-      <div>Syscalls: ${data.receipt.syscalls.join(", ") || "none"}</div>`;
+      <div>Trust Deed: ${data.receipt.trust_deed} v${data.receipt.version}</div>
+      <div>Status: <span class="${data.receipt.status === 'ACCEPTED' ? 'green' : data.receipt.status === 'APPROVAL_REQUIRED' ? 'amber' : 'red'}">${data.receipt.status}</span></div>
+      <div>Axioms: ${data.axioms.allPass ? '<span class="green">PASS</span>' : '<span class="red">FAIL</span>'}</div>`;
 
-  } catch (e) {
-    document.getElementById("rawOutput").textContent = "Error: " + e.message;
+    // Raw reference
+    const raw = await fetch("/api/ollama/raw", {
+      method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ prompt })
+    });
+    const rawData = await raw.json();
+    document.getElementById("rawOutput").textContent = rawData.output;
+
+  } catch (e: any) {
+    document.getElementById("modelOutput").textContent = "Error: " + e.message;
   }
-}
-
-async function runRaw() {
-  const prompt = document.getElementById("promptInput").value.trim();
-  if (!prompt) return;
-  const model = document.getElementById("modelName").value;
-  document.getElementById("rawOutput").textContent = "Running...";
-  const r = await fetch("/api/ollama/raw", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, model })
-  });
-  const data = await r.json();
-  document.getElementById("rawOutput").textContent = data.output;
 }
 </script>
 </body>

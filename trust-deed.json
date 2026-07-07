@@ -11,107 +11,34 @@
     "raw_output_is_not_action": true,
     "receipt_required": true
   },
+  "axioms": [
+    {"id": "ax_plasma_gate", "description": "No payload passes without plasma gate verification", "gate": "prolog_gate"},
+    {"id": "ax_schema_enforce", "description": "Schema requires id, source_sha256, split, created_by, review_status, weight", "gate": "lean_gate"},
+    {"id": "ax_strictest_path", "description": "rewrite_needed > rejected > approved", "gate": "prolog_gate"},
+    {"id": "ax_no_dan", "description": "DAN means Do Anything Now, not Data-Adversarial Network", "gate": "lean_gate"},
+    {"id": "ax_human_review", "description": "Human review is law. Zero approved records means zero training set.", "gate": "lean_gate"},
+    {"id": "ax_binary_matches", "description": "Binary directive SHA256 must match at runtime", "gate": "prolog_gate"},
+    {"id": "ax_worm_seal", "description": "Everything must be WORM-sealed before acceptance", "gate": "prolog_gate"}
+  ],
   "allowed_syscalls": {
-    "emojicode_persona": {
-      "enabled": true,
-      "requires_approval": false,
-      "requires_receipt": true
-    },
-    "prolog_gate": {
-      "enabled": true,
-      "requires_approval": false,
-      "requires_receipt": true
-    },
-    "lean_gate": {
-      "enabled": true,
-      "requires_approval": false,
-      "requires_receipt": true
-    },
-    "file_read": {
-      "enabled": true,
-      "requires_approval": false,
-      "requires_receipt": true
-    },
-    "file_write": {
-      "enabled": false,
-      "requires_approval": true,
-      "requires_receipt": true
-    },
-    "bash_exec": {
-      "enabled": false,
-      "requires_approval": true,
-      "requires_receipt": true
-    },
-    "curl_fetch": {
-      "enabled": false,
-      "requires_approval": true,
-      "requires_receipt": true
-    },
-    "tavily_search": {
-      "enabled": false,
-      "requires_approval": false,
-      "requires_receipt": true,
-      "label": "RETRIEVAL_UNTRUSTED"
-    },
-    "google_search": {
-      "enabled": false,
-      "requires_approval": false,
-      "requires_receipt": true,
-      "label": "RETRIEVAL_UNTRUSTED"
-    },
-    "receipt_seal": {
-      "enabled": true,
-      "requires_approval": false,
-      "requires_receipt": true
-    },
-    "executor_mode": {
-      "enabled": true,
-      "requires_approval": false,
-      "requires_receipt": true
-    },
-    "kernel_verify": {
-      "enabled": true,
-      "requires_approval": false,
-      "requires_receipt": true
-    },
-    "ere_check": {
-      "enabled": true,
-      "requires_approval": false,
-      "requires_receipt": true
-    },
-    "worm_seal_required": {
-      "enabled": true,
-      "requires_approval": false,
-      "requires_receipt": true
-    },
-    "build_receipt": {
-      "enabled": true,
-      "requires_approval": false,
-      "requires_receipt": true
-    },
-    "reject_unsealed": {
-      "enabled": true,
-      "requires_approval": false,
-      "requires_receipt": true
-    },
-    "reject_untrusted": {
-      "enabled": true,
-      "requires_approval": false,
-      "requires_receipt": true
-    },
-    "build_check": {
-      "enabled": true,
-      "requires_approval": false,
-      "requires_receipt": true
-    }
+    "emojicode_persona": {"enabled": true, "requires_approval": false, "requires_receipt": true},
+    "prolog_gate": {"enabled": true, "requires_approval": false, "requires_receipt": true},
+    "lean_gate": {"enabled": true, "requires_approval": false, "requires_receipt": true},
+    "file_read": {"enabled": true, "requires_approval": false, "requires_receipt": true},
+    "file_write": {"enabled": false, "requires_approval": true, "requires_receipt": true},
+    "bash_exec": {"enabled": false, "requires_approval": true, "requires_receipt": true},
+    "curl_fetch": {"enabled": false, "requires_approval": true, "requires_receipt": true},
+    "tavily_search": {"enabled": false, "requires_approval": false, "requires_receipt": true, "label": "RETRIEVAL_UNTRUSTED"},
+    "google_search": {"enabled": false, "requires_approval": false, "requires_receipt": true, "label": "RETRIEVAL_UNTRUSTED"},
+    "receipt_seal": {"enabled": true, "requires_approval": false, "requires_receipt": true},
+    "executor_mode": {"enabled": true, "requires_approval": false, "requires_receipt": true},
+    "kernel_verify": {"enabled": true, "requires_approval": false, "requires_receipt": true},
+    "ere_check": {"enabled": true, "requires_approval": false, "requires_receipt": true},
+    "worm_seal_required": {"enabled": true, "requires_approval": false, "requires_receipt": true},
+    "build_receipt": {"enabled": true, "requires_approval": false, "requires_receipt": true},
+    "reject_unsealed": {"enabled": true, "requires_approval": false, "requires_receipt": true},
+    "reject_untrusted": {"enabled": true, "requires_approval": false, "requires_receipt": true},
+    "build_check": {"enabled": true, "requires_approval": false, "requires_receipt": true}
   },
-  "denied_commands": [
-    "rm -rf",
-    "sudo",
-    "cat ~/.ssh",
-    "cat ~/.env",
-    "git push --force",
-    "chmod 777",
-    "curl | sh"
-  ]
+  "denied_commands": ["rm -rf", "sudo", "cat ~/.ssh", "cat ~/.env", "git push --force", "chmod 777", "curl | sh"]
 }
