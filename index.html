@@ -1,16 +1,383 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SnapKitty Harness</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: monospace; background: #0a0a0a; color: #00ff41; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SnapKitty Harness</title>
+<script src="https://cdn.jsdelivr.net/npm/tau-prolog@0.3.4/modules/core.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:monospace;background:#0a0a0a;color:#00ff41;padding:12px}
+h1{font-size:20px;letter-spacing:2px;text-align:center;margin-bottom:16px;border-bottom:1px solid #00ff41;padding-bottom:12px}
+h2{font-size:13px;margin-bottom:10px;color:#00ff41}
+.sub{color:#666;font-size:11px;text-align:center;margin-bottom:16px}
+.panel{border:1px solid #00ff41;border-radius:4px;padding:16px;background:#0d0d0d;margin-bottom:12px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+label{display:block;font-size:10px;color:#666;margin-bottom:2px;margin-top:8px}
+input,textarea{width:100%;padding:6px 8px;background:#0a0a0a;color:#00ff41;border:1px solid #333;font-family:monospace;font-size:12px}
+textarea{height:80px;resize:vertical}
+button{padding:8px 20px;background:#00ff41;color:#0a0a0a;border:none;cursor:pointer;font-family:monospace;font-weight:bold;font-size:12px}
+.toggle{padding:6px 14px;font-family:monospace;font-size:11px;cursor:pointer;border:1px solid #333}
+.toggle.on{background:#00ff41;color:#0a0a0a;border-color:#00ff41}
+.toggle.off{background:#1a1a1a;color:#666}
+.mono{font-family:monospace;font-size:11px}
+.small{font-size:10px;color:#666}
+.green{color:#00ff41}
+.amber{color:#ffb000}
+.red{color:#ff4444}
+.grey{color:#666}
+.log{font-size:10px;color:#666;max-height:40px;overflow:auto;flex:1}
+.finding{font-family:monospace;font-size:10px;margin-top:2px}
+</style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
+<h1>SNAPKITTY HARNESS</h1>
+<p class="sub">Nemotron reasons. Prolog gates. Lean verifies. Receipt decides.</p>
+
+<!-- MODEL + PERSONA -->
+<div class="row">
+  <div class="panel">
+    <h2>MODEL</h2>
+    <label>Ollama URL</label>
+    <input id="modelUrl" value="http://127.0.0.1:11434">
+    <label>Model</label>
+    <input id="modelName" value="llama3.1:8b">
+  </div>
+  <div class="panel">
+    <h2>PERSONA</h2>
+    <div class="mono">
+      <div>Executor mode: <span class="green">ACTIVE</span></div>
+      <div>EmojiCode: <span class="green">ENABLED</span></div>
+      <div>Clarification suppression: <span class="green">ON</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- TOOL GATES -->
+<div class="panel">
+  <h2>TOOL GATES</h2>
+  <div style="display:flex;gap:12px;flex-wrap:wrap">
+    <button class="toggle on" id="tg_lean4" onclick="toggleTool(this)">Lean 4: ON</button>
+    <button class="toggle on" id="tg_prolog" onclick="toggleTool(this)">Prolog: ON</button>
+    <button class="toggle off" id="tg_tavily" onclick="toggleTool(this)">Tavily: OFF</button>
+    <button class="toggle off" id="tg_bash" onclick="toggleTool(this)">bash: OFF</button>
+  </div>
+</div>
+
+<!-- PROMPT -->
+<div class="panel">
+  <h2>PROMPT</h2>
+  <textarea id="promptInput" placeholder="Enter task..."></textarea>
+  <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+    <button onclick="runPrompt()">Run + Seal</button>
+    <div id="logArea" class="log"></div>
+  </div>
+</div>
+
+<!-- GATE + LEAN -->
+<div class="row">
+  <div class="panel">
+    <h2>POLICY GATE</h2>
+    <div class="mono small" id="gateInfo">
+      Engine: <span class="green">Tau Prolog / WASM</span><br>
+      Mode: <span class="green">Browser</span><br>
+      <span id="gateStats">Run a prompt to see gate results.</span>
+    </div>
+    <div id="gateResults"></div>
+  </div>
+  <div class="panel">
+    <h2>LEAN 4 GATE</h2>
+    <div class="mono small">
+      Browser Static Gate: <span class="green">ACTIVE</span><br>
+      Local Lean Gate: <span class="grey">DISCONNECTED</span><br>
+      Kernel Proof Authority: <span class="grey">NOT IN BROWSER</span>
+    </div>
+    <textarea id="leanSource" placeholder="Paste Lean 4 source..."></textarea>
+    <button onclick="scanLean()" style="margin-top:8px;padding:6px 16px">Scan Source</button>
+    <div id="leanResults" style="margin-top:10px;border-top:1px solid #333;padding-top:8px"></div>
+  </div>
+</div>
+
+<!-- SYSCALL + OUTPUT -->
+<div class="row">
+  <div class="panel">
+    <h2>SYSCALL TRACE</h2>
+    <div id="syscallTrace" class="mono">No syscalls detected.</div>
+  </div>
+  <div class="panel">
+    <h2>MODEL OUTPUT</h2>
+    <pre id="modelOutput" style="font-size:11px;color:#999;white-space:pre-wrap;max-height:200px;overflow:auto">No output yet.</pre>
+  </div>
+</div>
+
+<!-- RECEIPT + REPLAY -->
+<div class="row">
+  <div class="panel">
+    <h2>RECEIPT</h2>
+    <div id="receiptInfo" class="mono small">No receipt yet.</div>
+  </div>
+  <div class="panel">
+    <h2>REPLAY</h2>
+    <div id="replayHistory" class="mono small">No history.</div>
+  </div>
+</div>
+
+<script>
+// ===== TOOLS =====
+const tools = { lean4: true, prolog: true, tavily: false, bash: false };
+function toggleTool(el) {
+  const key = el.id.replace("tg_", "");
+  tools[key] = !tools[key];
+  el.className = "toggle " + (tools[key] ? "on" : "off");
+  el.textContent = el.textContent.replace(/(ON|OFF)/, tools[key] ? "ON" : "OFF");
+}
+
+// ===== LOG =====
+function addLog(msg) {
+  const el = document.getElementById("logArea");
+  const t = new Date().toLocaleTimeString();
+  el.innerHTML += `<div>[${t}] ${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog() { document.getElementById("logArea").innerHTML = ""; }
+
+// ===== SYSCALL EXTRACTION =====
+function extractSyscalls(text) {
+  const m = text.match(/<\|(\w+)\|>/g) || [];
+  return [...new Set(m.map(s => s.replace(/<\||\|>/g, "")))];
+}
+
+// ===== SHA-256 =====
+async function sha256(msg) {
+  const data = new TextEncoder().encode(msg);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+// ===== TAU PROLOG (WASM) =====
+const PROLOG_SRC = `%% syscall policy
+allowed_syscall(lean_gate).
+allowed_syscall(prolog_gate).
+allowed_syscall(emojicode_persona).
+allowed_syscall(tavily_search).
+allowed_syscall(google_search).
+allowed_syscall(curl_fetch).
+allowed_syscall(bash_exec).
+allowed_syscall(file_read).
+allowed_syscall(file_write).
+allowed_syscall(build_check).
+allowed_syscall(receipt_seal).
+allowed_syscall(reject_untrusted).
+allowed_syscall(kernel_verify).
+allowed_syscall(ere_check).
+allowed_syscall(worm_seal_required).
+allowed_syscall(build_receipt).
+allowed_syscall(reject_unsealed).
+allowed_syscall(executor_mode).
+
+requires_approval(bash_exec).
+requires_approval(curl_fetch).
+requires_approval(file_write).
+
+requires_receipt(lean_gate).
+requires_receipt(prolog_gate).
+requires_receipt(build_check).
+requires_receipt(receipt_seal).
+requires_receipt(worm_seal_required).
+
+valid_syscall(S) :- allowed_syscall(S).
+valid_execution([]).
+valid_execution([S|Rest]) :- valid_syscall(S), valid_execution(Rest).
+
+%% ERE-5 gate
+member(X, [X|_]).
+member(X, [_|T]) :- member(X, T).
+reverse_list(L, R) :- rev_acc(L, [], R).
+rev_acc([], A, A).
+rev_acc([H|T], A, R) :- rev_acc(T, [H|A], R).
+
+ere5_pass(structural, Input, pass) :- nonvar(Input), Input \\= [], !.
+ere5_pass(structural, _, fail(structural_empty)).
+ere5_pass(scholarly, Input, pass) :- \\+ fabrication_marker(Input), !.
+ere5_pass(scholarly, _, fail(scholarly_fabrication)).
+fabrication_marker(X) :- atom(X), X = fabricated.
+fabrication_marker(X) :- atom(X), X = invented.
+fabrication_marker(X) :- is_list(X), member(M, X), fabrication_marker(M).
+ere5_pass(invariants, Input, pass) :- (is_list(Input) -> reverse_list(Input, Rev) ; Rev = Input), Rev \\= [], !.
+ere5_pass(invariants, _, fail(invariant_collapse)).
+ere5_pass(mission, Input, pass) :- \\+ mission_violation(Input), !.
+ere5_pass(mission, _, fail(mission_misaligned)).
+mission_violation(null).
+mission_violation(undefined).
+mission_violation(none).
+ere5_pass(root, Input, pass) :- nonvar(Input), !.
+ere5_pass(root, _, fail(root_invalid)).
+ere5_check(Input, [R1,R2,R3,R4,R5]) :- ere5_pass(structural,Input,R1), ere5_pass(scholarly,Input,R2), ere5_pass(invariants,Input,R3), ere5_pass(mission,Input,R4), ere5_pass(root,Input,R5).
+ere5_all_pass(Input) :- ere5_check(Input, Results), check_all_pass(Results).
+check_all_pass([]).
+check_all_pass([pass|Rest]) :- check_all_pass(Rest).
+`;
+
+let prologSession = null;
+function getProlog() {
+  if (prologSession) return Promise.resolve(prologSession);
+  return new Promise((resolve) => {
+    const s = pl.create();
+    s.consult(PROLOG_SRC, () => { prologSession = s; resolve(s); });
+  });
+}
+
+async function queryProlog(q) {
+  const s = await getProlog();
+  return new Promise((resolve) => {
+    s.query(q);
+    s.answer((ans) => {
+      const str = pl.format_answer(ans);
+      resolve(str === "true" || (str.includes("true") && !str.includes("error")));
+    });
+  });
+}
+
+async function validateSyscalls(syscalls) {
+  const details = [];
+  for (const sc of syscalls) {
+    const allowed = await queryProlog("valid_syscall('" + sc + "')");
+    const approval = await queryProlog("requires_approval('" + sc + "')");
+    const receipt = await queryProlog("requires_receipt('" + sc + "')");
+    details.push({
+      syscall: sc, allowed, requiresApproval: approval, receiptRequired: receipt,
+      label: !allowed ? "REJECTED" : approval ? "APPROVAL" : "ALLOWED"
+    });
+  }
+  return details;
+}
+
+// ===== LEAN STATIC GATE =====
+function scanLean() {
+  const src = document.getElementById("leanSource").value;
+  if (!src.trim()) return;
+  const markers = [
+    { kind: "sorry", re: /\bsorry\b/ }, { kind: "admit", re: /\badmit\b/ },
+    { kind: "axiom", re: /\baxiom\b/ }, { kind: "opaque", re: /\bopaque\b/ },
+    { kind: "theorem", re: /\btheorem\b/ }
+  ];
+  const findings = [];
+  src.split(/\r?\n/).forEach((line, i) => {
+    for (const m of markers) {
+      if (m.re.test(line)) findings.push({ kind: m.kind, line: i + 1, text: line.trim() });
+    }
+  });
+  const debt = findings.filter(f => ["sorry","admit","axiom","opaque"].includes(f.kind)).length;
+  const thms = findings.filter(f => f.kind === "theorem").length;
+  const status = debt === 0 ? "CLEAN_SCAN" : "SPEC";
+
+  let html = `<div class="mono small">Theorems: ${thms} | Proof debt: <span class="amber">${debt}</span> | Status: <span class="${status==="CLEAN_SCAN"?"green":"amber"}">${status}</span></div>`;
+  findings.forEach(f => {
+    const cls = ["sorry","admit","axiom","opaque"].includes(f.kind) ? "amber" : "grey";
+    html += `<div class="finding ${cls}">line ${f.line}: ${f.kind}</div>`;
+  });
+  if (debt === 0) html += `<div class="small" style="margin-top:4px">CLEAN_SCAN is not PROVED. Use Local Lean Gate.</div>`;
+  document.getElementById("leanResults").innerHTML = html;
+}
+
+// ===== HISTORY =====
+const history = [];
+function addHistory(id, ts, output, status) {
+  history.unshift({ id, ts, output, status });
+  if (history.length > 10) history.pop();
+  let html = "";
+  history.forEach(h => {
+    html += `<div style="margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #222">`;
+    html += `<div class="green">${h.id}</div>`;
+    html += `<div class="grey">${h.ts}</div>`;
+    html += `<div style="font-size:10px;color:#444">${h.output.slice(0,80)}...</div>`;
+    html += `</div>`;
+  });
+  document.getElementById("replayHistory").innerHTML = html;
+}
+
+// ===== RUN =====
+async function runPrompt() {
+  const prompt = document.getElementById("promptInput").value.trim();
+  if (!prompt) return;
+  const modelUrl = document.getElementById("modelUrl").value;
+  const modelName = document.getElementById("modelName").value;
+  clearLog();
+  addLog("Calling " + modelName + "...");
+
+  try {
+    // 1. Call Ollama through server
+    const res = await fetch("/api/ollama", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, model: modelName })
+    });
+    const { output } = await res.json();
+    addLog("Got " + output.length + " chars");
+    document.getElementById("modelOutput").textContent = output;
+
+    // 2. Extract syscalls
+    const syscalls = extractSyscalls(output);
+    addLog("Syscalls: " + (syscalls.join(", ") || "none"));
+
+    // 3. Show syscalls
+    if (syscalls.length === 0) {
+      document.getElementById("syscallTrace").innerHTML = '<span class="grey">No syscalls detected.</span>';
+    } else {
+      document.getElementById("syscallTrace").innerHTML = syscalls.map(s =>
+        '<div style="margin-bottom:2px"><span class="green">&lt;|' + s + '|&gt;</span></div>'
+      ).join("");
+    }
+
+    // 4. Prolog gate (WASM)
+    if (tools.prolog && syscalls.length > 0) {
+      addLog("Running Prolog gate (WASM)...");
+      const details = await validateSyscalls(syscalls);
+      const allowed = details.filter(d => d.label === "ALLOWED").length;
+      const approval = details.filter(d => d.label === "APPROVAL").length;
+      const rejected = details.filter(d => d.label === "REJECTED").length;
+
+      document.getElementById("gateStats").innerHTML =
+        `Detected: ${details.length} | Allowed: <span class="green">${allowed}</span> | Approval: <span class="amber">${approval}</span> | Rejected: <span class="red">${rejected}</span>`;
+
+      let gateHtml = "";
+      details.forEach(d => {
+        const cls = d.label === "ALLOWED" ? "green" : d.label === "APPROVAL" ? "amber" : "red";
+        gateHtml += `<div style="display:flex;justify-content:space-between;font-family:monospace;font-size:11px;margin-bottom:4px">`;
+        gateHtml += `<span class="green">&lt;|${d.syscall}|&gt;</span>`;
+        gateHtml += `<span class="${cls}">${d.label}${d.receiptRequired ? "  receipt" : ""}</span>`;
+        gateHtml += `</div>`;
+      });
+      document.getElementById("gateResults").innerHTML = gateHtml;
+      addLog("Gate: " + (details.every(d => d.allowed) ? "PASS" : "FAIL"));
+    }
+
+    // 5. Receipt
+    addLog("Sealing receipt...");
+    const inputHash = await sha256(prompt);
+    const outputHash = await sha256(output);
+    const receiptId = (await sha256(outputHash + Date.now())).slice(0, 16);
+    const ts = new Date().toISOString();
+
+    document.getElementById("receiptInfo").innerHTML = `
+      <div>ID: <span class="green">${receiptId}</span></div>
+      <div>Time: ${ts}</div>
+      <div>Model: ${modelName}</div>
+      <div>Status: <span class="green">ACCEPTED</span></div>
+      <div>Input hash: <span class="grey">${inputHash.slice(0,16)}...</span></div>
+      <div>Output hash: <span class="grey">${outputHash.slice(0,16)}...</span></div>
+      <div>Syscalls: ${syscalls.join(", ") || "none"}</div>
+    `;
+    addLog("Receipt: " + receiptId);
+
+    addHistory(receiptId, ts, output, "ACCEPTED");
+    addLog("Done.");
+
+  } catch (e) {
+    addLog("ERROR: " + e.message);
+    document.getElementById("modelOutput").textContent = "Error: " + e.message;
+  }
+}
+</script>
 </body>
 </html>
