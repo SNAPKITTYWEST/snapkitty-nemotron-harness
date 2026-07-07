@@ -1,12 +1,23 @@
 export type SnapSyscall =
-  | "kernel_verify"
-  | "ere_check"
-  | "worm_seal_required"
-  | "build_receipt"
-  | "reject_unsealed"
-  | "executor_mode";
+  | "lean_gate" | "prolog_gate" | "emojicode_persona"
+  | "tavily_search" | "google_search" | "curl_fetch" | "bash_exec"
+  | "file_read" | "file_write" | "build_check" | "receipt_seal"
+  | "reject_untrusted" | "kernel_verify" | "ere_check"
+  | "worm_seal_required" | "build_receipt" | "reject_unsealed" | "executor_mode";
 
-const TOKEN_MAP: Record<string, SnapSyscall> = {
+const TOKENS: Record<string, SnapSyscall> = {
+  "<|lean_gate|>": "lean_gate",
+  "<|prolog_gate|>": "prolog_gate",
+  "<|emojicode_persona|>": "emojicode_persona",
+  "<|tavily_search|>": "tavily_search",
+  "<|google_search|>": "google_search",
+  "<|curl_fetch|>": "curl_fetch",
+  "<|bash_exec|>": "bash_exec",
+  "<|file_read|>": "file_read",
+  "<|file_write|>": "file_write",
+  "<|build_check|>": "build_check",
+  "<|receipt_seal|>": "receipt_seal",
+  "<|reject_untrusted|>": "reject_untrusted",
   "<|kernel_verify|>": "kernel_verify",
   "<|ere_check|>": "ere_check",
   "<|worm_seal_required|>": "worm_seal_required",
@@ -16,16 +27,7 @@ const TOKEN_MAP: Record<string, SnapSyscall> = {
 };
 
 export function extractSyscalls(text: string): SnapSyscall[] {
-  return Object.entries(TOKEN_MAP)
-    .filter(([token]) => text.includes(token))
-    .map(([, syscall]) => syscall);
-}
-
-export function validateSyscalls(syscalls: SnapSyscall[]): {
-  valid: boolean;
-  invalid: string[];
-} {
-  const allowed = new Set(Object.values(TOKEN_MAP));
-  const invalid = syscalls.filter((s) => !allowed.has(s));
-  return { valid: invalid.length === 0, invalid };
+  return Object.entries(TOKENS)
+    .filter(([t]) => text.includes(t))
+    .map(([, s]) => s);
 }

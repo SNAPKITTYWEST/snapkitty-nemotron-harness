@@ -1,4 +1,4 @@
 node_modules/
 dist/
-receipts/*.json
 .env
+receipts/*.json

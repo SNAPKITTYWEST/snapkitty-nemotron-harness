@@ -1,3 +1,0 @@
-Audit this repository for clarification drag and theorem debt.
-Identify any unproved theorems, missing receipts, or unsealed artifacts.
-Mark uncertainty as SPEC. Do not claim proof unless the checker verifies it.

@@ -1,7 +1,0 @@
-Review the following Lean 4 theorem and classify it as PROVED, SPEC, or OBLIGATION.
-
-Theorem: For all valid friction values f in [0, 1], the thermal window satisfies lo < hi.
-Proof: lo(f) = round(f * 16383) in [0, 16383], hi(f) = 65535 - round(f * 16384) in [49151, 65535].
-lo(f) <= 16383 < 49151 <= hi(f).
-
-Mark uncertainty as SPEC. Do not claim proof unless the checker verifies it.

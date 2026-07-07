@@ -1,6 +1,16 @@
 %% SnapKitty Nemotron Harness — Syscall Gate
-%% Prolog validates all syscalls before execution.
-
+allowed_syscall(lean_gate).
+allowed_syscall(prolog_gate).
+allowed_syscall(emojicode_persona).
+allowed_syscall(tavily_search).
+allowed_syscall(google_search).
+allowed_syscall(curl_fetch).
+allowed_syscall(bash_exec).
+allowed_syscall(file_read).
+allowed_syscall(file_write).
+allowed_syscall(build_check).
+allowed_syscall(receipt_seal).
+allowed_syscall(reject_untrusted).
 allowed_syscall(kernel_verify).
 allowed_syscall(ere_check).
 allowed_syscall(worm_seal_required).
@@ -8,28 +18,9 @@ allowed_syscall(build_receipt).
 allowed_syscall(reject_unsealed).
 allowed_syscall(executor_mode).
 
-requires_receipt(kernel_verify).
-requires_receipt(ere_check).
-requires_receipt(worm_seal_required).
-requires_receipt(build_receipt).
+requires_approval(bash_exec).
+requires_approval(curl_fetch).
+requires_approval(file_write).
 
-valid_syscall(Syscall) :-
-    allowed_syscall(Syscall).
-
-valid_execution(Syscalls) :-
-    forall(member(S, Syscalls), valid_syscall(S)).
-
-%% ERE-5 five-pass check
-ere_pass(structural).
-ere_pass(scholarly).
-ere_pass(invariants).
-ere_pass(mission).
-ere_pass(root).
-
-valid_ere_pass(Pass) :-
-    ere_pass(Pass).
-
-ere_all_pass([]).
-ere_all_pass([P|Ps]) :-
-    valid_ere_pass(P),
-    ere_all_pass(Ps).
+valid_syscall(S) :- allowed_syscall(S).
+valid_execution(Syscalls) :- forall(member(S, Syscalls), valid_syscall(S)).

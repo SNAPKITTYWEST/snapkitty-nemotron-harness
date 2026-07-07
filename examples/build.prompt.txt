@@ -1,3 +1,0 @@
-Execute the smallest safe build step for the current project.
-Do not ask questions. Make the safest bounded assumption.
-Mark any uncertainty as SPEC or OBLIGATION.
