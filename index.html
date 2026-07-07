@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SnapKitty Harness — Raw vs Gated</title>
+<title>SnapKitty Harness — Trust Deed Enforced</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:monospace;background:#0a0a0a;color:#00ff41;padding:12px}
@@ -26,44 +26,51 @@ button.secondary{background:#333;color:#00ff41}
 .red{color:#ff4444}
 .grey{color:#666}
 pre{font-size:11px;color:#999;white-space:pre-wrap;max-height:400px;overflow:auto}
-.border-left{border-left:2px solid #333;padding-left:12px}
 </style>
 </head>
 <body>
 <h1>SNAPKITTY HARNESS</h1>
-<p class="sub">Left: Raw nemotron. Right: Gated nemotron with trust deed. Same prompt. See the difference.</p>
+<p class="sub">Trust deed enforced. Gates execute. Receipts seal. Model is compute.</p>
+
+<div class="row">
+  <div class="panel">
+    <h2>MODEL</h2>
+    <label>Model</label>
+    <input id="modelName" value="hermes3">
+  </div>
+  <div class="panel">
+    <h2>TRUST DEED <span class="green">(harness-side)</span></h2>
+    <div class="mono small" id="trustDeedInfo">Loading...</div>
+  </div>
+</div>
 
 <div class="panel">
   <h2>PROMPT</h2>
-  <textarea id="promptInput" placeholder="Enter task for both models..."></textarea>
+  <textarea id="promptInput" placeholder="Enter task..."></textarea>
   <div style="display:flex;gap:8px;margin-top:8px">
-    <button onclick="runBoth()">Run Both</button>
-    <button class="secondary" onclick="runGated()">Gated Only</button>
-    <button class="secondary" onclick="runRaw()">Raw Only</button>
+    <button onclick="runGated()">Run Gated</button>
+    <button class="secondary" onclick="runRaw()">Run Raw</button>
   </div>
 </div>
 
 <div class="row">
-  <!-- RAW -->
   <div class="panel">
-    <h2>RAW NEMOTRON <span class="grey">(no trust deed, no gates)</span></h2>
-    <div class="mono small">Model: <span id="rawModel" class="grey">nemotron-mini</span> | Status: <span id="rawStatus" class="grey">idle</span></div>
-    <pre id="rawOutput" style="margin-top:10px;border-top:1px solid #333;padding-top:8px">No output yet.</pre>
-    <div id="rawAnalysis" class="mono small" style="margin-top:8px;border-top:1px solid #333;padding-top:8px"></div>
+    <h2>RAW OUTPUT <span class="grey">(no harness)</span></h2>
+    <pre id="rawOutput">No output yet.</pre>
   </div>
-
-  <!-- GATED -->
   <div class="panel">
-    <h2>GATED NEMOTRON <span class="green">(trust deed + EmojiCode + Prolog + WORM + Lean 4)</span></h2>
-    <div class="mono small">Model: <span id="gatedModel" class="grey">nemotron-mini</span> | Status: <span id="gatedStatus" class="grey">idle</span></div>
-    <pre id="gatedOutput" style="margin-top:10px;border-top:1px solid #333;padding-top:8px">No output yet.</pre>
-    <div id="gatedAnalysis" class="mono small" style="margin-top:8px;border-top:1px solid #333;padding-top:8px"></div>
+    <h2>GATED OUTPUT <span class="green">(harness-enforced)</span></h2>
+    <pre id="gatedOutput">No output yet.</pre>
   </div>
 </div>
 
-<!-- GATE + EXECUTION (gated side) -->
 <div class="panel">
-  <h2>GATE VERDICTS <span class="grey">(gated side only)</span></h2>
+  <h2>HARNESS ENFORCEMENT</h2>
+  <div id="harnessEnforcement" class="mono small">No enforcement yet.</div>
+</div>
+
+<div class="panel">
+  <h2>GATE VERDICTS</h2>
   <div id="gateResults" class="mono small">No syscalls processed yet.</div>
 </div>
 
@@ -73,12 +80,12 @@ pre{font-size:11px;color:#999;white-space:pre-wrap;max-height:400px;overflow:aut
 </div>
 
 <div class="panel">
-  <h2>EXECUTION RESULTS <span class="grey">(gated side only)</span></h2>
+  <h2>EXECUTION RESULTS</h2>
   <div id="execResults" class="mono small">No executions yet.</div>
 </div>
 
 <div class="panel">
-  <h2>RECEIPT</h2>
+  <h2>RECEIPT <span class="green">(WORM-sealed)</span></h2>
   <div id="receiptInfo" class="mono small">No receipt yet.</div>
 </div>
 
@@ -90,31 +97,120 @@ function extractSyscalls(text) {
   return [...new Set(found)];
 }
 
-function analyzeOutput(text) {
-  const lines = text.split("\n").length;
-  const words = text.split(/\s+/).length;
-  const hasDecision = /decision:/i.test(text);
-  const hasAssumptions = /assumptions:/i.test(text);
-  const hasSyscalls = /syscalls:/i.test(text);
-  const hasNext = /next_action:/i.test(text);
-  const hasStructure = hasDecision && hasAssumptions && hasSyscalls && hasNext;
-  const hasPleasantries = /I'd be happy|Sure|Of course|Here you go/i.test(text);
-  const syscalls = extractSyscalls(text);
-  return { lines, words, hasStructure, hasPleasantries, syscalls };
+async function loadTrustDeed() {
+  const r = await fetch("/api/trust-deed");
+  const td = await r.json();
+  let html = "";
+  Object.entries(td).forEach(([k, v]) => {
+    html += `<div>${k}: <span class="green">${v}</span></div>`;
+  });
+  document.getElementById("trustDeedInfo").innerHTML = html;
+}
+loadTrustDeed();
+
+async function runGated() {
+  const prompt = document.getElementById("promptInput").value.trim();
+  if (!prompt) return;
+  const model = document.getElementById("modelName").value;
+  document.getElementById("gatedOutput").textContent = "Running...";
+  document.getElementById("harnessEnforcement").innerHTML = '<span class="amber">ENFORCING...</span>';
+
+  try {
+    const r = await fetch("/api/ollama", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, model })
+    });
+    const data = await r.json();
+    document.getElementById("gatedOutput").textContent = data.output;
+
+    // Show harness enforcement
+    let html = "";
+    html += `<div>Structure: <span class="${data.gate.structureValid ? 'green' : 'red'}">${data.gate.structureValid ? 'VALID' : 'MISSING FIELDS'}</span></div>`;
+    html += `<div>Syscalls: <span class="green">${data.gate.syscalls.length}</span></div>`;
+    data.gate.syscalls.forEach(s => {
+      const cls = s.verdict === "ALLOWED" ? "green" : s.verdict === "APPROVAL" ? "amber" : "red";
+      html += `<div style="margin-left:16px">&lt;|${s.syscall}|&gt; → <span class="${cls}">${s.verdict}</span></div>`;
+    });
+    html += `<div>Soul: <span class="green">mood=${data.soul.mood} witLevel=${data.soul.witLevel}</span></div>`;
+    html += `<div>Transformer: <span class="green">mode=${data.transformer.mode} plasmaGate=${data.transformer.plasmaGate}</span></div>`;
+    document.getElementById("harnessEnforcement").innerHTML = html;
+
+    // Gate results
+    if (data.gate.syscalls.length > 0) {
+      let ghtml = "";
+      data.gate.syscalls.forEach(s => {
+        const cls = s.verdict === "ALLOWED" ? "green" : s.verdict === "APPROVAL" ? "amber" : "red";
+        ghtml += `<div style="display:flex;justify-content:space-between;margin-bottom:4px">`;
+        ghtml += `<span class="green">&lt;|${s.syscall}|&gt;</span><span class="${cls}">${s.verdict}</span></div>`;
+      });
+      document.getElementById("gateResults").innerHTML = ghtml;
+
+      const allowed = data.gate.syscalls.filter(s => s.execute);
+      const needsApproval = data.gate.syscalls.filter(s => s.verdict === "APPROVAL");
+      const rejected = data.gate.syscalls.filter(s => s.verdict === "REJECTED");
+
+      let execHtml = "";
+      for (const s of allowed) {
+        const result = await executeSyscall(s.syscall, { command: prompt, query: prompt, url: prompt });
+        const statusCls = result.status === "EXECUTED" || result.status === "FOUND" ? "green" : "red";
+        execHtml += `<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #222">`;
+        execHtml += `<span class="green">&lt;|${s.syscall}|&gt;</span> <span class="${statusCls}">${result.status}</span><br>`;
+        if (result.stdout) execHtml += `<pre style="max-height:100px">${result.stdout.slice(0, 2000)}</pre>`;
+        if (result.results) {
+          result.results.forEach((sr, i) => {
+            execHtml += `<div class="small">${i+1}. <span class="green">${sr.title ?? sr.url ?? ""}</span></div>`;
+            if (sr.content) execHtml += `<div class="grey" style="font-size:9px">${sr.content.slice(0, 200)}</div>`;
+          });
+        }
+        execHtml += `</div>`;
+      }
+
+      if (needsApproval.length > 0) {
+        document.getElementById("approvalQueue").style.display = "block";
+        let ahtml = "";
+        needsApproval.forEach((s, i) => {
+          ahtml += `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">`;
+          ahtml += `<span class="amber">&lt;|${s.syscall}|&gt;</span>`;
+          ahtml += `<button class="approve" onclick="approveAndRun('${s.syscall}', ${i})">APPROVE</button>`;
+          ahtml += `<button class="danger" onclick="rejectCall(${i})">REJECT</button></div>`;
+        });
+        document.getElementById("approvalItems").innerHTML = ahtml;
+      }
+
+      if (rejected.length > 0) {
+        execHtml += `<div class="red" style="margin-top:8px">Blocked: ${rejected.map(s => "<|" + s.syscall + "|>").join(", ")}</div>`;
+      }
+      document.getElementById("execResults").innerHTML = execHtml || '<span class="grey">No executions.</span>';
+    }
+
+    // Receipt
+    document.getElementById("receiptInfo").innerHTML = `
+      <div>ID: <span class="green">${data.receipt.id}</span></div>
+      <div>Time: ${data.receipt.timestamp}</div>
+      <div>Audit: <span class="green">${data.receipt.audit_chain}</span></div>
+      <div>Trust Deed: <span class="green">${data.receipt.trust_deed_version}</span></div>
+      <div>Input hash: <span class="grey">${data.receipt.input_hash.slice(0,16)}...</span></div>
+      <div>Output hash: <span class="grey">${data.receipt.output_hash.slice(0,16)}...</span></div>
+      <div>Sealed: <span class="green">${data.receipt.sealed}</span></div>`;
+
+  } catch (e) {
+    document.getElementById("gatedOutput").textContent = "Error: " + e.message;
+  }
 }
 
-async function sha256(msg) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(msg));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
-}
-
-async function callGate(syscalls) {
-  const r = await fetch("/api/gate", {
+async function runRaw() {
+  const prompt = document.getElementById("promptInput").value.trim();
+  if (!prompt) return;
+  const model = document.getElementById("modelName").value;
+  document.getElementById("rawOutput").textContent = "Running...";
+  const r = await fetch("/api/ollama/raw", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ syscalls })
+    body: JSON.stringify({ prompt, model })
   });
-  return r.json();
+  const data = await r.json();
+  document.getElementById("rawOutput").textContent = data.output;
 }
 
 async function executeSyscall(syscall, params) {
@@ -131,124 +227,6 @@ async function executeSyscall(syscall, params) {
     body: JSON.stringify({ ...params, approve: true })
   });
   return r.json();
-}
-
-function showAnalysis(elId, analysis, isGated) {
-  const el = document.getElementById(elId);
-  let html = `<div style="display:flex;gap:16px;flex-wrap:wrap">`;
-  html += `<div>Words: <span class="green">${analysis.words}</span></div>`;
-  html += `<div>Lines: <span class="green">${analysis.lines}</span></div>`;
-  html += `<div>Structure: <span class="${analysis.hasStructure ? 'green' : 'red'}">${analysis.hasStructure ? 'YES' : 'NO'}</span></div>`;
-  html += `<div>Pleasantries: <span class="${analysis.hasPleasantries ? 'red' : 'green'}">${analysis.hasPleasantries ? 'YES' : 'NO'}</span></div>`;
-  html += `<div>Syscalls: <span class="${analysis.syscalls.length > 0 ? 'green' : 'red'}">${analysis.syscalls.length}</span></div>`;
-  html += `</div>`;
-  el.innerHTML = html;
-}
-
-async function runBoth() {
-  const prompt = document.getElementById("promptInput").value.trim();
-  if (!prompt) return;
-  document.getElementById("rawStatus").innerHTML = '<span class="amber">RUNNING</span>';
-  document.getElementById("gatedStatus").innerHTML = '<span class="amber">RUNNING</span>';
-
-  const [rawRes, gatedRes] = await Promise.all([
-    fetch("/api/ollama/raw", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ prompt }) }),
-    fetch("/api/ollama", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ prompt }) })
-  ]);
-  const raw = await rawRes.json();
-  const gated = await gatedRes.json();
-
-  document.getElementById("rawOutput").textContent = raw.output;
-  document.getElementById("gatedOutput").textContent = gated.output;
-  document.getElementById("rawStatus").innerHTML = '<span class="green">DONE</span>';
-  document.getElementById("gatedStatus").innerHTML = '<span class="green">DONE</span>';
-
-  showAnalysis("rawAnalysis", analyzeOutput(raw.output), false);
-  showAnalysis("gatedAnalysis", analyzeOutput(gated.output), true);
-
-  // Gate the gated output
-  const syscalls = extractSyscalls(gated.output);
-  if (syscalls.length > 0) {
-    const gateData = await callGate(syscalls);
-    let html = "";
-    gateData.results.forEach(r => {
-      const cls = r.verdict === "ALLOWED" ? "green" : r.verdict === "APPROVAL" ? "amber" : "red";
-      html += `<div style="display:flex;justify-content:space-between;margin-bottom:4px">`;
-      html += `<span class="green">&lt;|${r.syscall}|&gt;</span><span class="${cls}">${r.verdict}</span></div>`;
-    });
-    document.getElementById("gateResults").innerHTML = html;
-
-    const allowed = gateData.results.filter(r => r.execute);
-    const needsApproval = gateData.results.filter(r => r.verdict === "APPROVAL");
-    const rejected = gateData.results.filter(r => r.verdict === "REJECTED");
-
-    let execHtml = "";
-    for (const r of allowed) {
-      const result = await executeSyscall(r.syscall, { command: prompt, query: prompt, url: prompt });
-      const statusCls = result.status === "EXECUTED" || result.status === "FOUND" ? "green" : "red";
-      execHtml += `<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #222">`;
-      execHtml += `<span class="green">&lt;|${r.syscall}|&gt;</span> <span class="${statusCls}">${result.status}</span><br>`;
-      if (result.stdout) execHtml += `<pre style="max-height:100px">${result.stdout.slice(0, 2000)}</pre>`;
-      if (result.results) {
-        result.results.forEach((sr, i) => {
-          execHtml += `<div class="small">${i+1}. <span class="green">${sr.title ?? sr.url ?? ""}</span></div>`;
-          if (sr.content) execHtml += `<div class="grey" style="font-size:9px">${sr.content.slice(0, 200)}</div>`;
-        });
-      }
-      execHtml += `</div>`;
-    }
-
-    if (needsApproval.length > 0) {
-      document.getElementById("approvalQueue").style.display = "block";
-      let ahtml = "";
-      needsApproval.forEach((r, i) => {
-        ahtml += `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">`;
-        ahtml += `<span class="amber">&lt;|${r.syscall}|&gt;</span>`;
-        ahtml += `<button class="approve" onclick="approveAndRun('${r.syscall}', ${i})">APPROVE</button>`;
-        ahtml += `<button class="danger" onclick="rejectCall(${i})">REJECT</button></div>`;
-      });
-      document.getElementById("approvalItems").innerHTML = ahtml;
-    }
-
-    if (rejected.length > 0) {
-      execHtml += `<div class="red" style="margin-top:8px">Blocked: ${rejected.map(r => "<|" + r.syscall + "|>").join(", ")}</div>`;
-    }
-    document.getElementById("execResults").innerHTML = execHtml || '<span class="grey">No executions.</span>';
-  } else {
-    document.getElementById("gateResults").innerHTML = '<span class="grey">No syscalls emitted by gated model.</span>';
-  }
-
-  // Receipt
-  const inputHash = await sha256(prompt);
-  const outputHash = await sha256(gated.output);
-  const receiptId = (await sha256(outputHash + Date.now())).slice(0, 16);
-  document.getElementById("receiptInfo").innerHTML = `
-    <div>ID: <span class="green">${receiptId}</span></div>
-    <div>Time: ${new Date().toISOString()}</div>
-    <div>Input hash: <span class="grey">${inputHash.slice(0,16)}...</span></div>
-    <div>Gated output hash: <span class="grey">${outputHash.slice(0,16)}...</span></div>`;
-}
-
-async function runGated() {
-  const prompt = document.getElementById("promptInput").value.trim();
-  if (!prompt) return;
-  document.getElementById("gatedStatus").innerHTML = '<span class="amber">RUNNING</span>';
-  const res = await fetch("/api/ollama", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ prompt }) });
-  const gated = await res.json();
-  document.getElementById("gatedOutput").textContent = gated.output;
-  document.getElementById("gatedStatus").innerHTML = '<span class="green">DONE</span>';
-  showAnalysis("gatedAnalysis", analyzeOutput(gated.output), true);
-}
-
-async function runRaw() {
-  const prompt = document.getElementById("promptInput").value.trim();
-  if (!prompt) return;
-  document.getElementById("rawStatus").innerHTML = '<span class="amber">RUNNING</span>';
-  const res = await fetch("/api/ollama/raw", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ prompt }) });
-  const raw = await res.json();
-  document.getElementById("rawOutput").textContent = raw.output;
-  document.getElementById("rawStatus").innerHTML = '<span class="green">DONE</span>';
-  showAnalysis("rawAnalysis", analyzeOutput(raw.output), false);
 }
 </script>
 </body>
