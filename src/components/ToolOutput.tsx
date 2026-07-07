@@ -1,25 +1,22 @@
-import type { ToolResult } from "../App";
+interface Props {
+  tools: any[];
+}
 
-export default function ToolOutput({ tools }: { tools: ToolResult[] }) {
+export default function ToolOutput({ tools }: Props) {
   return (
     <div>
       <h2 style={{ fontSize: 13, marginBottom: 10, color: "#00ff41" }}>TOOL OUTPUT</h2>
-      {tools.length === 0 ? (
-        <div style={{ color: "#666", fontSize: 11 }}>No tools executed</div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {tools.map((t) => (
-            <div key={t.name} style={{ border: "1px solid #333", borderRadius: 3, padding: 8, background: "#0a0a0a" }}>
-              <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 4 }}>
-                {t.name.toUpperCase()}: <span style={{ color: t.status === "PROVED" || t.status === "PASS" ? "#00ff41" : t.status === "SPEC" ? "#ffb000" : "#ff4141" }}>{t.status}</span>
-              </div>
-              <pre style={{ fontSize: 10, color: "#888", maxHeight: 80, overflow: "auto", whiteSpace: "pre-wrap" }}>
-                {JSON.stringify(t.output, null, 2).slice(0, 500)}
-              </pre>
-            </div>
-          ))}
+      {tools.length === 0 && <div style={{ fontSize: 11, color: "#666" }}>No tool output yet.</div>}
+      {tools.map((t, i) => (
+        <div key={i} style={{ marginBottom: 8, fontSize: 11 }}>
+          <div style={{ color: t.status === "PASS" ? "#00ff41" : "#ffb000", fontWeight: "bold" }}>
+            {t.name}: {t.status}
+          </div>
+          <pre style={{ color: "#999", fontSize: 10, marginTop: 4, whiteSpace: "pre-wrap" }}>
+            {JSON.stringify(t.output, null, 2)?.slice(0, 200)}
+          </pre>
         </div>
-      )}
+      ))}
     </div>
   );
 }

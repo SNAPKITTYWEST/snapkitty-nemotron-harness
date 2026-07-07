@@ -1,17 +1,7 @@
 declare module "tau-prolog" {
   namespace pl {
-    function create(): pl.type.Session;
-
+    function create(): any;
     function format_answer(answer: any): string;
-
-    namespace type {
-      class Session {
-        consult(src: string, callback?: (ok?: any) => void): void;
-        query(goal: string): void;
-        answer(callback: (answer: any) => void): void;
-        rules: Record<string, any>;
-      }
-    }
   }
   export default pl;
 }
