@@ -48,6 +48,30 @@ app.post("/api/ollama", async (req, res) => {
   }
 });
 
+// ── Ollama RAW (no system prompt — for comparison) ──────────────────────────
+app.post("/api/ollama/raw", async (req, res) => {
+  const { prompt, model } = req.body;
+  const baseUrl = process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434";
+  const modelName = model ?? process.env.OLLAMA_MODEL ?? "nemotron-mini";
+  try {
+    const r = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: modelName,
+        messages: [{ role: "user", content: prompt }],
+        stream: false,
+        options: { temperature: 0, top_p: 0.1, seed: 42 },
+      }),
+    });
+    if (!r.ok) throw new Error(`Ollama ${r.status}`);
+    const json = (await r.json()) as { message?: { content?: string } };
+    res.json({ output: json.message?.content ?? "", model: modelName });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get("/api/ollama/test", async (_req, res) => {
   const baseUrl = process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434";
   try {

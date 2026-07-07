@@ -3,73 +3,68 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SnapKitty Harness</title>
+<title>SnapKitty Harness — Raw vs Gated</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:monospace;background:#0a0a0a;color:#00ff41;padding:12px}
-h1{font-size:20px;letter-spacing:2px;text-align:center;margin-bottom:16px;border-bottom:1px solid #00ff41;padding-bottom:12px}
-h2{font-size:13px;margin-bottom:10px;color:#00ff41}
+h1{font-size:20px;letter-spacing:2px;text-align:center;margin-bottom:4px;border-bottom:1px solid #00ff41;padding-bottom:12px}
 .sub{color:#666;font-size:11px;text-align:center;margin-bottom:16px}
 .panel{border:1px solid #00ff41;border-radius:4px;padding:16px;background:#0d0d0d;margin-bottom:12px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
 label{display:block;font-size:10px;color:#666;margin-bottom:2px;margin-top:8px}
 input,textarea{width:100%;padding:6px 8px;background:#0a0a0a;color:#00ff41;border:1px solid #333;font-family:monospace;font-size:12px}
-textarea{height:100px;resize:vertical}
+textarea{height:80px;resize:vertical}
 button{padding:8px 20px;background:#00ff41;color:#0a0a0a;border:none;cursor:pointer;font-family:monospace;font-weight:bold;font-size:12px}
 button:hover{background:#33ff66}
-button.danger{background:#ff4444;color:#fff}
 button.approve{background:#ffb000;color:#0a0a0a}
+button.danger{background:#ff4444;color:#fff}
+button.secondary{background:#333;color:#00ff41}
 .mono{font-family:monospace;font-size:11px}
 .small{font-size:10px;color:#666}
 .green{color:#00ff41}
 .amber{color:#ffb000}
 .red{color:#ff4444}
 .grey{color:#666}
-.log{font-size:10px;color:#666;max-height:60px;overflow:auto;flex:1}
-pre{font-size:11px;color:#999;white-space:pre-wrap;max-height:300px;overflow:auto}
+pre{font-size:11px;color:#999;white-space:pre-wrap;max-height:400px;overflow:auto}
+.border-left{border-left:2px solid #333;padding-left:12px}
 </style>
 </head>
 <body>
 <h1>SNAPKITTY HARNESS</h1>
-<p class="sub">Trust deed embedded. Nemotron reasons under policy. Gates execute. Receipts seal.</p>
-
-<div class="row">
-  <div class="panel">
-    <h2>MODEL</h2>
-    <label>Ollama URL</label>
-    <input id="modelUrl" value="http://127.0.0.1:11434">
-    <label>Model</label>
-    <input id="modelName" value="nemotron-mini">
-  </div>
-  <div class="panel">
-    <h2>TRUST DEED</h2>
-    <div class="mono small">
-      Identity: <span class="green">SnapKitty_Sovereign_Transformer</span><br>
-      Operator: <span class="green">Ahmad_Ali_Parr</span><br>
-      Logic: <span class="green">Prolog_Verified_Deterministic</span><br>
-      Gate: <span class="green">Ed25519_Enforced</span><br>
-      Tavily: <span class="green">EMBEDDED</span>
-    </div>
-  </div>
-</div>
+<p class="sub">Left: Raw nemotron. Right: Gated nemotron with trust deed. Same prompt. See the difference.</p>
 
 <div class="panel">
   <h2>PROMPT</h2>
-  <textarea id="promptInput" placeholder="Enter task..."></textarea>
-  <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
-    <button onclick="runPrompt()">Run + Gate + Seal</button>
-    <div id="logArea" class="log"></div>
+  <textarea id="promptInput" placeholder="Enter task for both models..."></textarea>
+  <div style="display:flex;gap:8px;margin-top:8px">
+    <button onclick="runBoth()">Run Both</button>
+    <button class="secondary" onclick="runGated()">Gated Only</button>
+    <button class="secondary" onclick="runRaw()">Raw Only</button>
   </div>
 </div>
 
-<div class="panel">
-  <h2>GATE VERDICTS</h2>
-  <div id="gateResults" class="mono">No syscalls processed yet.</div>
+<div class="row">
+  <!-- RAW -->
+  <div class="panel">
+    <h2>RAW NEMOTRON <span class="grey">(no trust deed, no gates)</span></h2>
+    <div class="mono small">Model: <span id="rawModel" class="grey">nemotron-mini</span> | Status: <span id="rawStatus" class="grey">idle</span></div>
+    <pre id="rawOutput" style="margin-top:10px;border-top:1px solid #333;padding-top:8px">No output yet.</pre>
+    <div id="rawAnalysis" class="mono small" style="margin-top:8px;border-top:1px solid #333;padding-top:8px"></div>
+  </div>
+
+  <!-- GATED -->
+  <div class="panel">
+    <h2>GATED NEMOTRON <span class="green">(trust deed + EmojiCode + Prolog + WORM + Lean 4)</span></h2>
+    <div class="mono small">Model: <span id="gatedModel" class="grey">nemotron-mini</span> | Status: <span id="gatedStatus" class="grey">idle</span></div>
+    <pre id="gatedOutput" style="margin-top:10px;border-top:1px solid #333;padding-top:8px">No output yet.</pre>
+    <div id="gatedAnalysis" class="mono small" style="margin-top:8px;border-top:1px solid #333;padding-top:8px"></div>
+  </div>
 </div>
 
+<!-- GATE + EXECUTION (gated side) -->
 <div class="panel">
-  <h2>MODEL OUTPUT</h2>
-  <pre id="modelOutput">No output yet.</pre>
+  <h2>GATE VERDICTS <span class="grey">(gated side only)</span></h2>
+  <div id="gateResults" class="mono small">No syscalls processed yet.</div>
 </div>
 
 <div id="approvalQueue" class="panel" style="display:none">
@@ -78,7 +73,7 @@ pre{font-size:11px;color:#999;white-space:pre-wrap;max-height:300px;overflow:aut
 </div>
 
 <div class="panel">
-  <h2>EXECUTION RESULTS</h2>
+  <h2>EXECUTION RESULTS <span class="grey">(gated side only)</span></h2>
   <div id="execResults" class="mono small">No executions yet.</div>
 </div>
 
@@ -88,17 +83,24 @@ pre{font-size:11px;color:#999;white-space:pre-wrap;max-height:300px;overflow:aut
 </div>
 
 <script>
-function addLog(msg) {
-  const el = document.getElementById("logArea");
-  el.innerHTML += `<div>${new Date().toLocaleTimeString()} ${msg}</div>`;
-  el.scrollTop = el.scrollHeight;
-}
-
 function extractSyscalls(text) {
   const re = /<\|(\w+)\|>/g;
   const found = []; let m;
   while ((m = re.exec(text))) found.push(m[1]);
   return [...new Set(found)];
+}
+
+function analyzeOutput(text) {
+  const lines = text.split("\n").length;
+  const words = text.split(/\s+/).length;
+  const hasDecision = /decision:/i.test(text);
+  const hasAssumptions = /assumptions:/i.test(text);
+  const hasSyscalls = /syscalls:/i.test(text);
+  const hasNext = /next_action:/i.test(text);
+  const hasStructure = hasDecision && hasAssumptions && hasSyscalls && hasNext;
+  const hasPleasantries = /I'd be happy|Sure|Of course|Here you go/i.test(text);
+  const syscalls = extractSyscalls(text);
+  return { lines, words, hasStructure, hasPleasantries, syscalls };
 }
 
 async function sha256(msg) {
@@ -117,12 +119,9 @@ async function callGate(syscalls) {
 
 async function executeSyscall(syscall, params) {
   const endpoints = {
-    bash_exec: "/api/bash",
-    curl_fetch: "/api/curl",
-    tavily_search: "/api/search",
-    google_search: "/api/search",
-    lean_gate: "/api/lean",
-    prolog_gate: "/api/prolog",
+    bash_exec: "/api/bash", curl_fetch: "/api/curl",
+    tavily_search: "/api/search", google_search: "/api/search",
+    lean_gate: "/api/lean", prolog_gate: "/api/prolog",
   };
   const ep = endpoints[syscall];
   if (!ep) return { status: "NO_ENDPOINT", syscall };
@@ -134,115 +133,123 @@ async function executeSyscall(syscall, params) {
   return r.json();
 }
 
-async function runPrompt() {
-  const prompt = document.getElementById("promptInput").value.trim();
-  if (!prompt) return;
-  const modelName = document.getElementById("modelName").value;
-  clearLog();
-  addLog("Calling " + modelName + " with trust deed embedded...");
-
-  try {
-    // 1. Call Ollama — trust deed is in system prompt on server
-    const res = await fetch("/api/ollama", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, model: modelName })
-    });
-    const { output } = await res.json();
-    addLog("Got " + output.length + " chars");
-    document.getElementById("modelOutput").textContent = output;
-
-    // 2. Extract syscalls nemotron emitted
-    const syscalls = extractSyscalls(output);
-    addLog("Syscalls: " + (syscalls.join(", ") || "none"));
-
-    if (syscalls.length === 0) {
-      document.getElementById("gateResults").innerHTML = '<span class="grey">No syscalls in output.</span>';
-    } else {
-      // 3. Gate them
-      const gateData = await callGate(syscalls);
-      const results = gateData.results;
-
-      let html = "";
-      results.forEach(r => {
-        const cls = r.verdict === "ALLOWED" ? "green" : r.verdict === "APPROVAL" ? "amber" : "red";
-        html += `<div style="display:flex;justify-content:space-between;margin-bottom:4px">`;
-        html += `<span class="green">&lt;|${r.syscall}|&gt;</span>`;
-        html += `<span class="${cls}">${r.verdict}</span>`;
-        html += `</div>`;
-      });
-      document.getElementById("gateResults").innerHTML = html;
-
-      // 4. Execute ALLOWED syscalls immediately
-      const allowed = results.filter(r => r.execute);
-      const needsApproval = results.filter(r => r.verdict === "APPROVAL");
-      const rejected = results.filter(r => r.verdict === "REJECTED");
-
-      addLog("Allowed: " + allowed.length + " | Approval: " + needsApproval.length + " | Rejected: " + rejected.length);
-
-      // Execute allowed
-      let execHtml = "";
-      for (const r of allowed) {
-        addLog("Executing " + r.syscall + "...");
-        const result = await executeSyscall(r.syscall, { command: prompt, query: prompt, url: prompt });
-        const statusCls = result.status === "EXECUTED" || result.status === "FOUND" ? "green" : "red";
-        execHtml += `<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #222">`;
-        execHtml += `<span class="green">&lt;|${r.syscall}|&gt;</span> <span class="${statusCls}">${result.status}</span><br>`;
-        if (result.stdout) execHtml += `<pre style="max-height:100px">${result.stdout.slice(0, 2000)}</pre>`;
-        if (result.stderr) execHtml += `<pre style="color:#ff4444;max-height:100px">${result.stderr.slice(0, 1000)}</pre>`;
-        if (result.results) {
-          result.results.forEach((sr, i) => {
-            execHtml += `<div class="small">${i+1}. <span class="green">${sr.title ?? sr.url ?? ""}</span></div>`;
-            if (sr.content) execHtml += `<div class="grey" style="font-size:9px">${sr.content.slice(0, 200)}</div>`;
-          });
-        }
-        execHtml += `</div>`;
-      }
-
-      // Show approval queue
-      if (needsApproval.length > 0) {
-        const queue = document.getElementById("approvalQueue");
-        queue.style.display = "block";
-        let ahtml = "";
-        needsApproval.forEach((r, i) => {
-          ahtml += `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">`;
-          ahtml += `<span class="amber">&lt;|${r.syscall}|&gt;</span>`;
-          ahtml += `<button class="approve" onclick="approveAndRun('${r.syscall}', ${i})">APPROVE</button>`;
-          ahtml += `<button class="danger" onclick="rejectCall(${i})">REJECT</button>`;
-          ahtml += `</div>`;
-        });
-        document.getElementById("approvalItems").innerHTML = ahtml;
-      }
-
-      if (rejected.length > 0) {
-        execHtml += `<div class="red" style="margin-top:8px">Blocked: ${rejected.map(r => "<|" + r.syscall + "|>").join(", ")}</div>`;
-      }
-
-      document.getElementById("execResults").innerHTML = execHtml || '<span class="grey">No executions.</span>';
-    }
-
-    // 5. Seal receipt
-    addLog("Sealing receipt...");
-    const inputHash = await sha256(prompt);
-    const outputHash = await sha256(output);
-    const receiptId = (await sha256(outputHash + Date.now())).slice(0, 16);
-    document.getElementById("receiptInfo").innerHTML = `
-      <div>ID: <span class="green">${receiptId}</span></div>
-      <div>Time: ${new Date().toISOString()}</div>
-      <div>Model: ${modelName}</div>
-      <div>Syscalls: ${syscalls.join(", ") || "none"}</div>
-      <div>Input hash: <span class="grey">${inputHash.slice(0,16)}...</span></div>
-      <div>Output hash: <span class="grey">${outputHash.slice(0,16)}...</span></div>
-    `;
-    addLog("Done. Receipt: " + receiptId);
-
-  } catch (e) {
-    addLog("ERROR: " + e.message);
-    document.getElementById("modelOutput").textContent = "Error: " + e.message;
-  }
+function showAnalysis(elId, analysis, isGated) {
+  const el = document.getElementById(elId);
+  let html = `<div style="display:flex;gap:16px;flex-wrap:wrap">`;
+  html += `<div>Words: <span class="green">${analysis.words}</span></div>`;
+  html += `<div>Lines: <span class="green">${analysis.lines}</span></div>`;
+  html += `<div>Structure: <span class="${analysis.hasStructure ? 'green' : 'red'}">${analysis.hasStructure ? 'YES' : 'NO'}</span></div>`;
+  html += `<div>Pleasantries: <span class="${analysis.hasPleasantries ? 'red' : 'green'}">${analysis.hasPleasantries ? 'YES' : 'NO'}</span></div>`;
+  html += `<div>Syscalls: <span class="${analysis.syscalls.length > 0 ? 'green' : 'red'}">${analysis.syscalls.length}</span></div>`;
+  html += `</div>`;
+  el.innerHTML = html;
 }
 
-function clearLog() { document.getElementById("logArea").innerHTML = ""; }
+async function runBoth() {
+  const prompt = document.getElementById("promptInput").value.trim();
+  if (!prompt) return;
+  document.getElementById("rawStatus").innerHTML = '<span class="amber">RUNNING</span>';
+  document.getElementById("gatedStatus").innerHTML = '<span class="amber">RUNNING</span>';
+
+  const [rawRes, gatedRes] = await Promise.all([
+    fetch("/api/ollama/raw", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ prompt }) }),
+    fetch("/api/ollama", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ prompt }) })
+  ]);
+  const raw = await rawRes.json();
+  const gated = await gatedRes.json();
+
+  document.getElementById("rawOutput").textContent = raw.output;
+  document.getElementById("gatedOutput").textContent = gated.output;
+  document.getElementById("rawStatus").innerHTML = '<span class="green">DONE</span>';
+  document.getElementById("gatedStatus").innerHTML = '<span class="green">DONE</span>';
+
+  showAnalysis("rawAnalysis", analyzeOutput(raw.output), false);
+  showAnalysis("gatedAnalysis", analyzeOutput(gated.output), true);
+
+  // Gate the gated output
+  const syscalls = extractSyscalls(gated.output);
+  if (syscalls.length > 0) {
+    const gateData = await callGate(syscalls);
+    let html = "";
+    gateData.results.forEach(r => {
+      const cls = r.verdict === "ALLOWED" ? "green" : r.verdict === "APPROVAL" ? "amber" : "red";
+      html += `<div style="display:flex;justify-content:space-between;margin-bottom:4px">`;
+      html += `<span class="green">&lt;|${r.syscall}|&gt;</span><span class="${cls}">${r.verdict}</span></div>`;
+    });
+    document.getElementById("gateResults").innerHTML = html;
+
+    const allowed = gateData.results.filter(r => r.execute);
+    const needsApproval = gateData.results.filter(r => r.verdict === "APPROVAL");
+    const rejected = gateData.results.filter(r => r.verdict === "REJECTED");
+
+    let execHtml = "";
+    for (const r of allowed) {
+      const result = await executeSyscall(r.syscall, { command: prompt, query: prompt, url: prompt });
+      const statusCls = result.status === "EXECUTED" || result.status === "FOUND" ? "green" : "red";
+      execHtml += `<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #222">`;
+      execHtml += `<span class="green">&lt;|${r.syscall}|&gt;</span> <span class="${statusCls}">${result.status}</span><br>`;
+      if (result.stdout) execHtml += `<pre style="max-height:100px">${result.stdout.slice(0, 2000)}</pre>`;
+      if (result.results) {
+        result.results.forEach((sr, i) => {
+          execHtml += `<div class="small">${i+1}. <span class="green">${sr.title ?? sr.url ?? ""}</span></div>`;
+          if (sr.content) execHtml += `<div class="grey" style="font-size:9px">${sr.content.slice(0, 200)}</div>`;
+        });
+      }
+      execHtml += `</div>`;
+    }
+
+    if (needsApproval.length > 0) {
+      document.getElementById("approvalQueue").style.display = "block";
+      let ahtml = "";
+      needsApproval.forEach((r, i) => {
+        ahtml += `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">`;
+        ahtml += `<span class="amber">&lt;|${r.syscall}|&gt;</span>`;
+        ahtml += `<button class="approve" onclick="approveAndRun('${r.syscall}', ${i})">APPROVE</button>`;
+        ahtml += `<button class="danger" onclick="rejectCall(${i})">REJECT</button></div>`;
+      });
+      document.getElementById("approvalItems").innerHTML = ahtml;
+    }
+
+    if (rejected.length > 0) {
+      execHtml += `<div class="red" style="margin-top:8px">Blocked: ${rejected.map(r => "<|" + r.syscall + "|>").join(", ")}</div>`;
+    }
+    document.getElementById("execResults").innerHTML = execHtml || '<span class="grey">No executions.</span>';
+  } else {
+    document.getElementById("gateResults").innerHTML = '<span class="grey">No syscalls emitted by gated model.</span>';
+  }
+
+  // Receipt
+  const inputHash = await sha256(prompt);
+  const outputHash = await sha256(gated.output);
+  const receiptId = (await sha256(outputHash + Date.now())).slice(0, 16);
+  document.getElementById("receiptInfo").innerHTML = `
+    <div>ID: <span class="green">${receiptId}</span></div>
+    <div>Time: ${new Date().toISOString()}</div>
+    <div>Input hash: <span class="grey">${inputHash.slice(0,16)}...</span></div>
+    <div>Gated output hash: <span class="grey">${outputHash.slice(0,16)}...</span></div>`;
+}
+
+async function runGated() {
+  const prompt = document.getElementById("promptInput").value.trim();
+  if (!prompt) return;
+  document.getElementById("gatedStatus").innerHTML = '<span class="amber">RUNNING</span>';
+  const res = await fetch("/api/ollama", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ prompt }) });
+  const gated = await res.json();
+  document.getElementById("gatedOutput").textContent = gated.output;
+  document.getElementById("gatedStatus").innerHTML = '<span class="green">DONE</span>';
+  showAnalysis("gatedAnalysis", analyzeOutput(gated.output), true);
+}
+
+async function runRaw() {
+  const prompt = document.getElementById("promptInput").value.trim();
+  if (!prompt) return;
+  document.getElementById("rawStatus").innerHTML = '<span class="amber">RUNNING</span>';
+  const res = await fetch("/api/ollama/raw", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ prompt }) });
+  const raw = await res.json();
+  document.getElementById("rawOutput").textContent = raw.output;
+  document.getElementById("rawStatus").innerHTML = '<span class="green">DONE</span>';
+  showAnalysis("rawAnalysis", analyzeOutput(raw.output), false);
+}
 </script>
 </body>
 </html>
