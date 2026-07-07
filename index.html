@@ -153,98 +153,22 @@ async function sha256(msg) {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-// ===== TAU PROLOG (WASM) =====
-const PROLOG_SRC = `%% syscall policy
-allowed_syscall(lean_gate).
-allowed_syscall(prolog_gate).
-allowed_syscall(emojicode_persona).
-allowed_syscall(tavily_search).
-allowed_syscall(google_search).
-allowed_syscall(curl_fetch).
-allowed_syscall(bash_exec).
-allowed_syscall(file_read).
-allowed_syscall(file_write).
-allowed_syscall(build_check).
-allowed_syscall(receipt_seal).
-allowed_syscall(reject_untrusted).
-allowed_syscall(kernel_verify).
-allowed_syscall(ere_check).
-allowed_syscall(worm_seal_required).
-allowed_syscall(build_receipt).
-allowed_syscall(reject_unsealed).
-allowed_syscall(executor_mode).
-
-requires_approval(bash_exec).
-requires_approval(curl_fetch).
-requires_approval(file_write).
-
-requires_receipt(lean_gate).
-requires_receipt(prolog_gate).
-requires_receipt(build_check).
-requires_receipt(receipt_seal).
-requires_receipt(worm_seal_required).
-
-valid_syscall(S) :- allowed_syscall(S).
-valid_execution([]).
-valid_execution([S|Rest]) :- valid_syscall(S), valid_execution(Rest).
-
-%% ERE-5 gate
-member(X, [X|_]).
-member(X, [_|T]) :- member(X, T).
-reverse_list(L, R) :- rev_acc(L, [], R).
-rev_acc([], A, A).
-rev_acc([H|T], A, R) :- rev_acc(T, [H|A], R).
-
-ere5_pass(structural, Input, pass) :- nonvar(Input), Input \\= [], !.
-ere5_pass(structural, _, fail(structural_empty)).
-ere5_pass(scholarly, Input, pass) :- \\+ fabrication_marker(Input), !.
-ere5_pass(scholarly, _, fail(scholarly_fabrication)).
-fabrication_marker(X) :- atom(X), X = fabricated.
-fabrication_marker(X) :- atom(X), X = invented.
-fabrication_marker(X) :- is_list(X), member(M, X), fabrication_marker(M).
-ere5_pass(invariants, Input, pass) :- (is_list(Input) -> reverse_list(Input, Rev) ; Rev = Input), Rev \\= [], !.
-ere5_pass(invariants, _, fail(invariant_collapse)).
-ere5_pass(mission, Input, pass) :- \\+ mission_violation(Input), !.
-ere5_pass(mission, _, fail(mission_misaligned)).
-mission_violation(null).
-mission_violation(undefined).
-mission_violation(none).
-ere5_pass(root, Input, pass) :- nonvar(Input), !.
-ere5_pass(root, _, fail(root_invalid)).
-ere5_check(Input, [R1,R2,R3,R4,R5]) :- ere5_pass(structural,Input,R1), ere5_pass(scholarly,Input,R2), ere5_pass(invariants,Input,R3), ere5_pass(mission,Input,R4), ere5_pass(root,Input,R5).
-ere5_all_pass(Input) :- ere5_check(Input, Results), check_all_pass(Results).
-check_all_pass([]).
-check_all_pass([pass|Rest]) :- check_all_pass(Rest).
-`;
-
-let prologSession = null;
-function getProlog() {
-  if (prologSession) return Promise.resolve(prologSession);
-  return new Promise((resolve) => {
-    const s = pl.create();
-    s.consult(PROLOG_SRC, () => { prologSession = s; resolve(s); });
-  });
-}
-
-async function queryProlog(q) {
-  const s = await getProlog();
-  return new Promise((resolve) => {
-    s.query(q);
-    s.answer((ans) => {
-      const str = pl.format_answer(ans);
-      const isFalse = str === "false";
-      const isError = str.includes("error") || str.includes("exception");
-      resolve(!isFalse && !isError);
-    });
-  });
-}
+// ===== PROLOG GATE (pure JS) =====
+const ALLOWED = new Set([
+  "lean_gate","prolog_gate","emojicode_persona","tavily_search","google_search",
+  "curl_fetch","bash_exec","file_read","file_write","build_check","receipt_seal",
+  "reject_untrusted","kernel_verify","ere_check","worm_seal_required",
+  "build_receipt","reject_unsealed","executor_mode"
+]);
+const REQUIRES_APPROVAL = new Set(["bash_exec","curl_fetch","file_write"]);
+const REQUIRES_RECEIPT = new Set(["lean_gate","prolog_gate","build_check","receipt_seal","worm_seal_required"]);
 
 async function validateSyscalls(syscalls) {
   const details = [];
   for (const sc of syscalls) {
-    const allowed = await queryProlog("valid_syscall('" + sc + "')");
-    const approval = await queryProlog("requires_approval('" + sc + "')");
-    const receipt = await queryProlog("requires_receipt('" + sc + "')");
+    const allowed = ALLOWED.has(sc);
+    const approval = REQUIRES_APPROVAL.has(sc);
+    const receipt = REQUIRES_RECEIPT.has(sc);
     details.push({
       syscall: sc, allowed, requiresApproval: approval, receiptRequired: receipt,
       label: !allowed ? "REJECTED" : approval ? "APPROVAL" : "ALLOWED"
@@ -378,13 +302,6 @@ async function runPrompt() {
     addLog("ERROR: " + e.message);
     document.getElementById("modelOutput").textContent = "Error: " + e.message;
   }
-}
-</script>
-<script src="https://cdn.jsdelivr.net/npm/tau-prolog@0.3.4/modules/core.min.js"></script>
-<script>
-// Verify tau-prolog loaded
-if (typeof pl === "undefined") {
-  document.getElementById("logArea").innerHTML = '<div style="color:red">ERROR: tau-prolog CDN failed to load. Check internet connection.</div>';
 }
 </script>
 </body>
