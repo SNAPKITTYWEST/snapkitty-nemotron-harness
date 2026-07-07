@@ -18,51 +18,28 @@ const WORKSPACE = process.env.WORKSPACE ?? process.cwd();
 const SYSTEM_PROMPT = readFileSync(join(import.meta.dirname ?? ".", "prompts", "system.snap.md"), "utf8");
 const EXECUTOR_PROMPT = readFileSync(join(import.meta.dirname ?? ".", "prompts", "executor-mode.md"), "utf8");
 
-// EmojiCode persona map
-const EMOJI_MAP: Record<string, string> = {
-  "🤖": "agent_execution_mode",
-  "🧠": "reasoning_mode",
-  "🔒": "seal_required",
-  "🧪": "test_required",
-  "📜": "proof_status_check",
-  "🚫": "reject_unsafe",
-  "🧾": "receipt_required",
-  "⚙️": "build_step",
-  "🕳️": "uncertainty_SPEC",
-  "✅": "verified_passed_gate",
-};
-
-function buildPersonaPrompt(userPrompt: string, emojiEnabled: boolean): string {
-  let persona = SYSTEM_PROMPT;
-  if (emojiEnabled) {
-    const emojis = userPrompt.match(/[\u{1F300}-\u{1FAFF}]/gu) ?? [];
-    const modes = emojis.map((e) => EMOJI_MAP[e]).filter(Boolean);
-    if (modes.length > 0) {
-      persona += `\n\nActive EmojiCode modes: ${modes.join(", ")}`;
-    }
-  }
-  return `${persona}\n\nUSER TASK:\n${userPrompt}\n\nReturn:\n- decision\n- assumptions\n- syscalls\n- next_action`;
-}
-
-// ── Ollama ──────────────────────────────────────────────────────────────────
+// ── Ollama (chat API with system message) ──────────────────────────────────
 app.post("/api/ollama", async (req, res) => {
   const { prompt, model } = req.body;
   const baseUrl = process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434";
-  const modelName = model ?? process.env.OLLAMA_MODEL ?? "nemotron";
+  const modelName = model ?? process.env.OLLAMA_MODEL ?? "nemotron-mini";
   try {
-    const r = await fetch(`${baseUrl}/api/generate`, {
+    const r = await fetch(`${baseUrl}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: modelName,
-        prompt,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT + "\n\n" + EXECUTOR_PROMPT },
+          { role: "user", content: prompt },
+        ],
         stream: false,
         options: { temperature: 0, top_p: 0.1, seed: 42 },
       }),
     });
     if (!r.ok) throw new Error(`Ollama ${r.status}`);
-    const json = (await r.json()) as { response?: string };
-    res.json({ output: json.response ?? "", model: modelName });
+    const json = (await r.json()) as { message?: { content?: string } };
+    res.json({ output: json.message?.content ?? "", model: modelName });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
@@ -83,9 +60,7 @@ app.get("/api/ollama/test", async (_req, res) => {
 app.post("/api/lean", async (req, res) => {
   const { path: leanPath } = req.body;
   const target = leanPath ?? join(WORKSPACE, "lean4");
-
   try {
-    // Run lake build
     let buildOk = true;
     let buildOut = "";
     let buildErr = "";
@@ -100,8 +75,6 @@ app.post("/api/lean", async (req, res) => {
       buildOut = e.stdout ?? "";
       buildErr = e.stderr ?? e.message;
     }
-
-    // Scan for sorry/admit/axiom/opaque in .lean files
     let scanRaw = "";
     try {
       const { stdout } = await execFileAsync("rg", [
@@ -110,25 +83,15 @@ app.post("/api/lean", async (req, res) => {
         target, "--glob", "*.lean",
       ], { encoding: "utf8", timeout: 30_000 });
       scanRaw = stdout;
-    } catch {
-      // rg not found or no matches
-      scanRaw = "";
-    }
-
+    } catch { scanRaw = ""; }
     const hasSorry = /\bsorry\b/.test(scanRaw);
     const hasAdmit = /\badmit\b/.test(scanRaw);
     const hasAxiom = /\baxiom\b/.test(scanRaw);
     const hasOpaque = /\bopaque\b/.test(scanRaw);
-
     let status: string;
-    if (buildOk && !hasSorry && !hasAdmit && !hasAxiom && !hasOpaque) {
-      status = "PROVED";
-    } else if (hasSorry || hasAdmit) {
-      status = "SPEC";
-    } else {
-      status = "OBLIGATION";
-    }
-
+    if (buildOk && !hasSorry && !hasAdmit && !hasAxiom && !hasOpaque) status = "PROVED";
+    else if (hasSorry || hasAdmit) status = "SPEC";
+    else status = "OBLIGATION";
     res.json({
       status,
       build: { ok: buildOk, stdout: buildOut.slice(0, 4000), stderr: buildErr.slice(0, 4000) },
@@ -143,13 +106,10 @@ app.post("/api/lean", async (req, res) => {
 app.post("/api/prolog", async (req, res) => {
   const { query, file } = req.body;
   const kernelFile = file ?? join(import.meta.dirname ?? ".", "kernel", "syscalls.pl");
-
   try {
     const q = query ?? "true";
     const { stdout, stderr } = await execFileAsync(SWIPL, [
-      "-g", q,
-      "-t", "halt.",
-      kernelFile,
+      "-g", q, "-t", "halt.", kernelFile,
     ], { encoding: "utf8", timeout: 15_000 });
     const output = stdout.trim() || stderr.trim();
     res.json({ success: !output.includes("error"), output, kernel: "syscalls.pl" });
@@ -158,117 +118,93 @@ app.post("/api/prolog", async (req, res) => {
   }
 });
 
-// ── ERE-5 Five-Pass Gate ────────────────────────────────────────────────────
-app.post("/api/ere", async (req, res) => {
-  const { input } = req.body;
-  const ereFile = join(import.meta.dirname ?? ".", "kernel", "ere_gate.pl");
-  const syscallsFile = join(import.meta.dirname ?? ".", "kernel", "syscalls.pl");
-
-  if (!existsSync(ereFile)) {
-    return res.json({ pass: false, error: "ere_gate.pl not found", results: [] });
-  }
-
-  const prologInput = input ?? "test_input";
-
-  try {
-    const query = `ere5_check(${prologInput}, Results), maplist( writeln, Results )`;
-    const { stdout, stderr } = await execFileAsync(SWIPL, [
-      "-g", query,
-      "-t", "halt.",
-      syscallsFile,
-      ereFile,
-    ], { encoding: "utf8", timeout: 15_000 });
-
-    const lines = (stdout + stderr).split("\n").filter((l) => l.trim());
-    const results = lines.map((l) => l.trim()).filter((l) => l.startsWith("pass") || l.startsWith("fail"));
-    const allPass = results.every((r) => r === "pass");
-
-    res.json({ pass: allPass, results, input: prologInput, kernel: "ere_gate.pl" });
-  } catch (e: any) {
-    res.json({ pass: false, error: e.message, results: [], kernel: "ere_gate.pl" });
-  }
-});
-
 // ── Bash Sandbox ────────────────────────────────────────────────────────────
 const BASH_DENY = [/rm\s+-rf/, /sudo/, /chmod/, /chown/, /passwd/, /curl/, /wget/, /ssh/, /scp/];
-
 app.post("/api/bash", async (req, res) => {
   const { command, approve } = req.body;
   if (!command) return res.status(400).json({ error: "command required" });
   if (!approve) return res.json({ status: "PENDING_APPROVAL", command });
-
-  const denied = BASH_DENY.find((rx) => rx.test(command));
-  if (denied) return res.json({ status: "DENIED", reason: `blocked: ${denied}` });
-
+  if (BASH_DENY.some((rx) => rx.test(command))) {
+    return res.json({ status: "REJECTED", command, reason: "denied pattern" });
+  }
   try {
     const { stdout, stderr } = await execFileAsync("bash", ["-c", command], {
-      cwd: WORKSPACE, encoding: "utf8", timeout: 60_000, maxBuffer: 1024 * 1024,
+      timeout: 30_000, encoding: "utf8", maxBuffer: 1024 * 1024,
     });
-    res.json({ status: "OK", stdout: stdout.slice(0, 8000), stderr: stderr.slice(0, 4000) });
+    res.json({ status: "EXECUTED", command, stdout: stdout.slice(0, 8000), stderr: stderr.slice(0, 4000) });
   } catch (e: any) {
-    res.json({ status: "ERROR", stdout: e.stdout?.slice(0, 4000) ?? "", stderr: e.stderr?.slice(0, 4000) ?? e.message });
+    res.json({ status: "ERROR", command, error: e.message });
   }
 });
 
-// ── Curl / Fetch ────────────────────────────────────────────────────────────
+// ── Curl Sandbox ────────────────────────────────────────────────────────────
 app.post("/api/curl", async (req, res) => {
-  const { url, method, approve } = req.body;
+  const { url, approve } = req.body;
   if (!url) return res.status(400).json({ error: "url required" });
-  if (!approve) return res.json({ status: "PENDING_APPROVAL", url, method: method ?? "GET" });
-
+  if (!approve) return res.json({ status: "PENDING_APPROVAL", url });
   try {
-    const r = await fetch(url, {
-      method: method ?? "GET",
-      headers: { "User-Agent": "SnapKitty-Harness/0.2" },
-      signal: AbortSignal.timeout(15_000),
+    const { stdout, stderr } = await execFileAsync("curl", ["-sL", "--max-time", "15", url], {
+      timeout: 20_000, encoding: "utf8", maxBuffer: 1024 * 1024,
     });
-    const body = await r.text();
-    res.json({ status: "OK", httpStatus: r.status, body: body.slice(0, 50000), contentType: r.headers.get("content-type") });
+    res.json({ status: "FETCHED", url, body: stdout.slice(0, 8000) });
   } catch (e: any) {
-    res.json({ status: "ERROR", error: e.message });
+    res.json({ status: "ERROR", url, error: e.message });
   }
 });
 
-// ── Search ──────────────────────────────────────────────────────────────────
+// ── Tavily Search ──────────────────────────────────────────────────────────
 app.post("/api/search", async (req, res) => {
-  const { query, provider, approve } = req.body;
-  if (!query) return res.status(400).json({ error: "query required" });
-  if (!approve) return res.json({ status: "PENDING_APPROVAL", query, provider });
-
+  const { query } = req.body;
+  const apiKey = process.env.TAVILY_API_KEY;
+  if (!apiKey) return res.json({ status: "NO_KEY", query });
   try {
-    if (provider === "tavily") {
-      const key = process.env.TAVILY_API_KEY;
-      if (!key) return res.json({ status: "ERROR", error: "TAVILY_API_KEY not set" });
-      const r = await fetch("https://api.tavily.com/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ api_key: key, query, max_results: 5 }),
-      });
-      const json = await r.json();
-      res.json({ status: "OK", provider: "tavily", results: json.results ?? [], marked: "RETRIEVAL_UNTRUSTED" });
-    } else {
-      const r = await fetch(`https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(query)}`, {
-        headers: { "User-Agent": "SnapKitty-Harness/0.2" },
-        signal: AbortSignal.timeout(10_000),
-      });
-      const html = await r.text();
-      res.json({ status: "OK", provider: "duckduckgo", body: html.slice(0, 20000), marked: "RETRIEVAL_UNTRUSTED" });
-    }
+    const r = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: apiKey, query, max_results: 5 }),
+    });
+    const data = await r.json();
+    res.json({ status: "FOUND", query, results: data.results ?? [] });
   } catch (e: any) {
-    res.json({ status: "ERROR", error: e.message });
+    res.json({ status: "ERROR", query, error: e.message });
   }
 });
 
-// ── EmojiCode ───────────────────────────────────────────────────────────────
+// ── EmojiCode Decode ───────────────────────────────────────────────────────
 app.post("/api/emojicode", (req, res) => {
   const { text } = req.body;
-  if (!text) return res.json({ modes: [], emojis: [] });
-
-  const emojis = text.match(/[\u{1F300}-\u{1FAFF}]/gu) ?? [];
-  const modes = emojis.map((e: string) => ({ emoji: e, mode: EMOJI_MAP[e] ?? "unknown" }));
-  res.json({ emojis, modes, count: modes.length });
+  const EMOJI_MAP: Record<string, string> = {
+    "🤖": "agent_execution_mode", "🧠": "reasoning_mode", "🔒": "seal_required",
+    "🧪": "test_required", "📜": "proof_status_check", "🚫": "reject_unsafe",
+    "🧾": "receipt_required", "⚙️": "build_step", "🕳️": "uncertainty_SPEC",
+    "✅": "verified_passed_gate",
+  };
+  const found = (text ?? "").match(/[\u{1F300}-\u{1FAFF}]/gu) ?? [];
+  const decoded = found.map((e) => ({ emoji: e, mode: EMOJI_MAP[e] ?? "unknown" }));
+  res.json({ decoded });
 });
 
-// ── Start ───────────────────────────────────────────────────────────────────
-const PORT = parseInt(process.env.PORT ?? "3001", 10);
-app.listen(PORT, () => console.log(`[harness] server on :${PORT}`));
+// ── Gate classify ──────────────────────────────────────────────────────────
+const ALLOWED = new Set([
+  "lean_gate", "prolog_gate", "emojicode_persona", "file_read",
+  "kernel_verify", "ere_check", "receipt_seal", "worm_seal_required",
+  "build_receipt", "reject_unsealed", "executor_mode", "reject_untrusted",
+  "build_check",
+]);
+const REQUIRES_APPROVAL = new Set(["bash_exec", "curl_fetch", "tavily_search", "google_search"]);
+// everything else = REJECTED
+
+app.post("/api/gate", (req, res) => {
+  const { syscalls } = req.body;
+  if (!Array.isArray(syscalls)) return res.status(400).json({ error: "syscalls array required" });
+  const results = syscalls.map((s: string) => {
+    if (ALLOWED.has(s)) return { syscall: s, verdict: "ALLOWED", execute: true };
+    if (REQUIRES_APPROVAL.has(s)) return { syscall: s, verdict: "APPROVAL", execute: false };
+    return { syscall: s, verdict: "REJECTED", execute: false };
+  });
+  res.json({ results });
+});
+
+app.listen(process.env.PORT ?? 3001, () => {
+  console.log(`Harness server on :${process.env.PORT ?? 3001}`);
+});

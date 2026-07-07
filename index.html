@@ -14,26 +14,25 @@ h2{font-size:13px;margin-bottom:10px;color:#00ff41}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
 label{display:block;font-size:10px;color:#666;margin-bottom:2px;margin-top:8px}
 input,textarea{width:100%;padding:6px 8px;background:#0a0a0a;color:#00ff41;border:1px solid #333;font-family:monospace;font-size:12px}
-textarea{height:80px;resize:vertical}
+textarea{height:100px;resize:vertical}
 button{padding:8px 20px;background:#00ff41;color:#0a0a0a;border:none;cursor:pointer;font-family:monospace;font-weight:bold;font-size:12px}
-.toggle{padding:6px 14px;font-family:monospace;font-size:11px;cursor:pointer;border:1px solid #333}
-.toggle.on{background:#00ff41;color:#0a0a0a;border-color:#00ff41}
-.toggle.off{background:#1a1a1a;color:#666}
+button:hover{background:#33ff66}
+button.danger{background:#ff4444;color:#fff}
+button.approve{background:#ffb000;color:#0a0a0a}
 .mono{font-family:monospace;font-size:11px}
 .small{font-size:10px;color:#666}
 .green{color:#00ff41}
 .amber{color:#ffb000}
 .red{color:#ff4444}
 .grey{color:#666}
-.log{font-size:10px;color:#666;max-height:40px;overflow:auto;flex:1}
-.finding{font-family:monospace;font-size:10px;margin-top:2px}
+.log{font-size:10px;color:#666;max-height:60px;overflow:auto;flex:1}
+pre{font-size:11px;color:#999;white-space:pre-wrap;max-height:300px;overflow:auto}
 </style>
 </head>
 <body>
 <h1>SNAPKITTY HARNESS</h1>
-<p class="sub">Nemotron reasons. Prolog gates. Lean verifies. Receipt decides.</p>
+<p class="sub">Trust deed embedded. Nemotron reasons under policy. Gates execute. Receipts seal.</p>
 
-<!-- MODEL + PERSONA -->
 <div class="row">
   <div class="panel">
     <h2>MODEL</h2>
@@ -43,195 +42,107 @@ button{padding:8px 20px;background:#00ff41;color:#0a0a0a;border:none;cursor:poin
     <input id="modelName" value="nemotron-mini">
   </div>
   <div class="panel">
-    <h2>PERSONA</h2>
-    <div class="mono">
-      <div>Executor mode: <span class="green">ACTIVE</span></div>
-      <div>EmojiCode: <span class="green">ENABLED</span></div>
-      <div>Clarification suppression: <span class="green">ON</span></div>
+    <h2>TRUST DEED</h2>
+    <div class="mono small">
+      Identity: <span class="green">SnapKitty_Sovereign_Transformer</span><br>
+      Operator: <span class="green">Ahmad_Ali_Parr</span><br>
+      Logic: <span class="green">Prolog_Verified_Deterministic</span><br>
+      Gate: <span class="green">Ed25519_Enforced</span><br>
+      Tavily: <span class="green">EMBEDDED</span>
     </div>
   </div>
 </div>
 
-<!-- TOOL GATES -->
-<div class="panel">
-  <h2>TOOL GATES</h2>
-  <div style="display:flex;gap:12px;flex-wrap:wrap">
-    <button class="toggle on" id="tg_lean4" onclick="toggleTool(this)">Lean 4: ON</button>
-    <button class="toggle on" id="tg_prolog" onclick="toggleTool(this)">Prolog: ON</button>
-    <button class="toggle off" id="tg_tavily" onclick="toggleTool(this)">Tavily: OFF</button>
-    <button class="toggle off" id="tg_bash" onclick="toggleTool(this)">bash: OFF</button>
-  </div>
-</div>
-
-<!-- PROMPT -->
 <div class="panel">
   <h2>PROMPT</h2>
   <textarea id="promptInput" placeholder="Enter task..."></textarea>
   <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
-    <button onclick="runPrompt()">Run + Seal</button>
+    <button onclick="runPrompt()">Run + Gate + Seal</button>
     <div id="logArea" class="log"></div>
   </div>
 </div>
 
-<!-- GATE + LEAN -->
-<div class="row">
-  <div class="panel">
-    <h2>POLICY GATE</h2>
-    <div class="mono small" id="gateInfo">
-      Engine: <span class="green">Tau Prolog / WASM</span><br>
-      Mode: <span class="green">Browser</span><br>
-      <span id="gateStats">Run a prompt to see gate results.</span>
-    </div>
-    <div id="gateResults"></div>
-  </div>
-  <div class="panel">
-    <h2>LEAN 4 GATE</h2>
-    <div class="mono small">
-      Browser Static Gate: <span class="green">ACTIVE</span>
-    </div>
-    <textarea id="leanSource" placeholder="Paste Lean 4 source..."></textarea>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button onclick="scanLean()" style="padding:6px 16px;font-size:11px">Scan Source</button>
-    </div>
-    <div id="leanResults" style="margin-top:10px;border-top:1px solid #333;padding-top:8px"></div>
-  </div>
+<div class="panel">
+  <h2>GATE VERDICTS</h2>
+  <div id="gateResults" class="mono">No syscalls processed yet.</div>
 </div>
 
-<!-- SYSCALL + OUTPUT -->
-<div class="row">
-  <div class="panel">
-    <h2>SYSCALL TRACE</h2>
-    <div id="syscallTrace" class="mono">No syscalls detected.</div>
-  </div>
-  <div class="panel">
-    <h2>MODEL OUTPUT</h2>
-    <pre id="modelOutput" style="font-size:11px;color:#999;white-space:pre-wrap;max-height:200px;overflow:auto">No output yet.</pre>
-  </div>
+<div class="panel">
+  <h2>MODEL OUTPUT</h2>
+  <pre id="modelOutput">No output yet.</pre>
 </div>
 
-<!-- RECEIPT + REPLAY -->
-<div class="row">
-  <div class="panel">
-    <h2>RECEIPT</h2>
-    <div id="receiptInfo" class="mono small">No receipt yet.</div>
-  </div>
-  <div class="panel">
-    <h2>REPLAY</h2>
-    <div id="replayHistory" class="mono small">No history.</div>
-  </div>
+<div id="approvalQueue" class="panel" style="display:none">
+  <h2>APPROVAL REQUIRED</h2>
+  <div id="approvalItems"></div>
+</div>
+
+<div class="panel">
+  <h2>EXECUTION RESULTS</h2>
+  <div id="execResults" class="mono small">No executions yet.</div>
+</div>
+
+<div class="panel">
+  <h2>RECEIPT</h2>
+  <div id="receiptInfo" class="mono small">No receipt yet.</div>
 </div>
 
 <script>
-// ===== TOOLS =====
-const tools = { lean4: true, prolog: true, tavily: false, bash: false };
-function toggleTool(el) {
-  const key = el.id.replace("tg_", "");
-  tools[key] = !tools[key];
-  el.className = "toggle " + (tools[key] ? "on" : "off");
-  el.textContent = el.textContent.replace(/(ON|OFF)/, tools[key] ? "ON" : "OFF");
-}
-
-// ===== LOG =====
 function addLog(msg) {
   const el = document.getElementById("logArea");
-  const t = new Date().toLocaleTimeString();
-  el.innerHTML += `<div>[${t}] ${msg}</div>`;
+  el.innerHTML += `<div>${new Date().toLocaleTimeString()} ${msg}</div>`;
   el.scrollTop = el.scrollHeight;
 }
-function clearLog() { document.getElementById("logArea").innerHTML = ""; }
 
-// ===== SYSCALL EXTRACTION =====
 function extractSyscalls(text) {
-  const m = text.match(/<\|(\w+)\|>/g) || [];
-  return [...new Set(m.map(s => s.replace(/<\||\|>/g, "")))];
+  const re = /<\|(\w+)\|>/g;
+  const found = []; let m;
+  while ((m = re.exec(text))) found.push(m[1]);
+  return [...new Set(found)];
 }
 
-// ===== SHA-256 =====
 async function sha256(msg) {
-  const data = new TextEncoder().encode(msg);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(msg));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-// ===== PROLOG GATE (pure JS) =====
-const ALLOWED = new Set([
-  "lean_gate","prolog_gate","emojicode_persona","tavily_search","google_search",
-  "curl_fetch","bash_exec","file_read","file_write","build_check","receipt_seal",
-  "reject_untrusted","kernel_verify","ere_check","worm_seal_required",
-  "build_receipt","reject_unsealed","executor_mode"
-]);
-const REQUIRES_APPROVAL = new Set(["bash_exec","curl_fetch","file_write"]);
-const REQUIRES_RECEIPT = new Set(["lean_gate","prolog_gate","build_check","receipt_seal","worm_seal_required"]);
-
-async function validateSyscalls(syscalls) {
-  const details = [];
-  for (const sc of syscalls) {
-    const allowed = ALLOWED.has(sc);
-    const approval = REQUIRES_APPROVAL.has(sc);
-    const receipt = REQUIRES_RECEIPT.has(sc);
-    details.push({
-      syscall: sc, allowed, requiresApproval: approval, receiptRequired: receipt,
-      label: !allowed ? "REJECTED" : approval ? "APPROVAL" : "ALLOWED"
-    });
-  }
-  return details;
-}
-
-// ===== LEAN STATIC GATE =====
-function scanLean() {
-  const src = document.getElementById("leanSource").value;
-  if (!src.trim()) return;
-  const markers = [
-    { kind: "sorry", re: /\bsorry\b/ }, { kind: "admit", re: /\badmit\b/ },
-    { kind: "axiom", re: /\baxiom\b/ }, { kind: "opaque", re: /\bopaque\b/ },
-    { kind: "theorem", re: /\btheorem\b/ }
-  ];
-  const findings = [];
-  src.split(/\r?\n/).forEach((line, i) => {
-    for (const m of markers) {
-      if (m.re.test(line)) findings.push({ kind: m.kind, line: i + 1, text: line.trim() });
-    }
+async function callGate(syscalls) {
+  const r = await fetch("/api/gate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ syscalls })
   });
-  const debt = findings.filter(f => ["sorry","admit","axiom","opaque"].includes(f.kind)).length;
-  const thms = findings.filter(f => f.kind === "theorem").length;
-  const status = debt === 0 ? "CLEAN_SCAN" : "SPEC";
-
-  let html = `<div class="mono small">Theorems: ${thms} | Proof debt: <span class="amber">${debt}</span> | Status: <span class="${status==="CLEAN_SCAN"?"green":"amber"}">${status}</span></div>`;
-  findings.forEach(f => {
-    const cls = ["sorry","admit","axiom","opaque"].includes(f.kind) ? "amber" : "grey";
-    html += `<div class="finding ${cls}">line ${f.line}: ${f.kind}</div>`;
-  });
-  if (debt === 0) html += `<div class="small" style="margin-top:4px">CLEAN_SCAN is not PROVED. Use Local Lean Gate.</div>`;
-  document.getElementById("leanResults").innerHTML = html;
+  return r.json();
 }
 
-// ===== HISTORY =====
-const history = [];
-function addHistory(id, ts, output, status) {
-  history.unshift({ id, ts, output, status });
-  if (history.length > 10) history.pop();
-  let html = "";
-  history.forEach(h => {
-    html += `<div style="margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #222">`;
-    html += `<div class="green">${h.id}</div>`;
-    html += `<div class="grey">${h.ts}</div>`;
-    html += `<div style="font-size:10px;color:#444">${h.output.slice(0,80)}...</div>`;
-    html += `</div>`;
+async function executeSyscall(syscall, params) {
+  const endpoints = {
+    bash_exec: "/api/bash",
+    curl_fetch: "/api/curl",
+    tavily_search: "/api/search",
+    google_search: "/api/search",
+    lean_gate: "/api/lean",
+    prolog_gate: "/api/prolog",
+  };
+  const ep = endpoints[syscall];
+  if (!ep) return { status: "NO_ENDPOINT", syscall };
+  const r = await fetch(ep, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...params, approve: true })
   });
-  document.getElementById("replayHistory").innerHTML = html;
+  return r.json();
 }
 
-// ===== RUN =====
 async function runPrompt() {
   const prompt = document.getElementById("promptInput").value.trim();
   if (!prompt) return;
-  const modelUrl = document.getElementById("modelUrl").value;
   const modelName = document.getElementById("modelName").value;
   clearLog();
-  addLog("Calling " + modelName + "...");
+  addLog("Calling " + modelName + " with trust deed embedded...");
 
   try {
-    // 1. Call Ollama through server
+    // 1. Call Ollama — trust deed is in system prompt on server
     const res = await fetch("/api/ollama", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -241,62 +152,89 @@ async function runPrompt() {
     addLog("Got " + output.length + " chars");
     document.getElementById("modelOutput").textContent = output;
 
-    // 2. Extract syscalls
+    // 2. Extract syscalls nemotron emitted
     const syscalls = extractSyscalls(output);
     addLog("Syscalls: " + (syscalls.join(", ") || "none"));
 
-    // 3. Show syscalls
     if (syscalls.length === 0) {
-      document.getElementById("syscallTrace").innerHTML = '<span class="grey">No syscalls detected.</span>';
+      document.getElementById("gateResults").innerHTML = '<span class="grey">No syscalls in output.</span>';
     } else {
-      document.getElementById("syscallTrace").innerHTML = syscalls.map(s =>
-        '<div style="margin-bottom:2px"><span class="green">&lt;|' + s + '|&gt;</span></div>'
-      ).join("");
-    }
+      // 3. Gate them
+      const gateData = await callGate(syscalls);
+      const results = gateData.results;
 
-    // 4. Prolog gate (WASM)
-    if (tools.prolog && syscalls.length > 0) {
-      addLog("Running Prolog gate (WASM)...");
-      const details = await validateSyscalls(syscalls);
-      const allowed = details.filter(d => d.label === "ALLOWED").length;
-      const approval = details.filter(d => d.label === "APPROVAL").length;
-      const rejected = details.filter(d => d.label === "REJECTED").length;
-
-      document.getElementById("gateStats").innerHTML =
-        `Detected: ${details.length} | Allowed: <span class="green">${allowed}</span> | Approval: <span class="amber">${approval}</span> | Rejected: <span class="red">${rejected}</span>`;
-
-      let gateHtml = "";
-      details.forEach(d => {
-        const cls = d.label === "ALLOWED" ? "green" : d.label === "APPROVAL" ? "amber" : "red";
-        gateHtml += `<div style="display:flex;justify-content:space-between;font-family:monospace;font-size:11px;margin-bottom:4px">`;
-        gateHtml += `<span class="green">&lt;|${d.syscall}|&gt;</span>`;
-        gateHtml += `<span class="${cls}">${d.label}${d.receiptRequired ? "  receipt" : ""}</span>`;
-        gateHtml += `</div>`;
+      let html = "";
+      results.forEach(r => {
+        const cls = r.verdict === "ALLOWED" ? "green" : r.verdict === "APPROVAL" ? "amber" : "red";
+        html += `<div style="display:flex;justify-content:space-between;margin-bottom:4px">`;
+        html += `<span class="green">&lt;|${r.syscall}|&gt;</span>`;
+        html += `<span class="${cls}">${r.verdict}</span>`;
+        html += `</div>`;
       });
-      document.getElementById("gateResults").innerHTML = gateHtml;
-      addLog("Gate: " + (details.every(d => d.allowed) ? "PASS" : "FAIL"));
+      document.getElementById("gateResults").innerHTML = html;
+
+      // 4. Execute ALLOWED syscalls immediately
+      const allowed = results.filter(r => r.execute);
+      const needsApproval = results.filter(r => r.verdict === "APPROVAL");
+      const rejected = results.filter(r => r.verdict === "REJECTED");
+
+      addLog("Allowed: " + allowed.length + " | Approval: " + needsApproval.length + " | Rejected: " + rejected.length);
+
+      // Execute allowed
+      let execHtml = "";
+      for (const r of allowed) {
+        addLog("Executing " + r.syscall + "...");
+        const result = await executeSyscall(r.syscall, { command: prompt, query: prompt, url: prompt });
+        const statusCls = result.status === "EXECUTED" || result.status === "FOUND" ? "green" : "red";
+        execHtml += `<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #222">`;
+        execHtml += `<span class="green">&lt;|${r.syscall}|&gt;</span> <span class="${statusCls}">${result.status}</span><br>`;
+        if (result.stdout) execHtml += `<pre style="max-height:100px">${result.stdout.slice(0, 2000)}</pre>`;
+        if (result.stderr) execHtml += `<pre style="color:#ff4444;max-height:100px">${result.stderr.slice(0, 1000)}</pre>`;
+        if (result.results) {
+          result.results.forEach((sr, i) => {
+            execHtml += `<div class="small">${i+1}. <span class="green">${sr.title ?? sr.url ?? ""}</span></div>`;
+            if (sr.content) execHtml += `<div class="grey" style="font-size:9px">${sr.content.slice(0, 200)}</div>`;
+          });
+        }
+        execHtml += `</div>`;
+      }
+
+      // Show approval queue
+      if (needsApproval.length > 0) {
+        const queue = document.getElementById("approvalQueue");
+        queue.style.display = "block";
+        let ahtml = "";
+        needsApproval.forEach((r, i) => {
+          ahtml += `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">`;
+          ahtml += `<span class="amber">&lt;|${r.syscall}|&gt;</span>`;
+          ahtml += `<button class="approve" onclick="approveAndRun('${r.syscall}', ${i})">APPROVE</button>`;
+          ahtml += `<button class="danger" onclick="rejectCall(${i})">REJECT</button>`;
+          ahtml += `</div>`;
+        });
+        document.getElementById("approvalItems").innerHTML = ahtml;
+      }
+
+      if (rejected.length > 0) {
+        execHtml += `<div class="red" style="margin-top:8px">Blocked: ${rejected.map(r => "<|" + r.syscall + "|>").join(", ")}</div>`;
+      }
+
+      document.getElementById("execResults").innerHTML = execHtml || '<span class="grey">No executions.</span>';
     }
 
-    // 5. Receipt
+    // 5. Seal receipt
     addLog("Sealing receipt...");
     const inputHash = await sha256(prompt);
     const outputHash = await sha256(output);
     const receiptId = (await sha256(outputHash + Date.now())).slice(0, 16);
-    const ts = new Date().toISOString();
-
     document.getElementById("receiptInfo").innerHTML = `
       <div>ID: <span class="green">${receiptId}</span></div>
-      <div>Time: ${ts}</div>
+      <div>Time: ${new Date().toISOString()}</div>
       <div>Model: ${modelName}</div>
-      <div>Status: <span class="green">ACCEPTED</span></div>
+      <div>Syscalls: ${syscalls.join(", ") || "none"}</div>
       <div>Input hash: <span class="grey">${inputHash.slice(0,16)}...</span></div>
       <div>Output hash: <span class="grey">${outputHash.slice(0,16)}...</span></div>
-      <div>Syscalls: ${syscalls.join(", ") || "none"}</div>
     `;
-    addLog("Receipt: " + receiptId);
-
-    addHistory(receiptId, ts, output, "ACCEPTED");
-    addLog("Done.");
+    addLog("Done. Receipt: " + receiptId);
 
   } catch (e) {
     addLog("ERROR: " + e.message);
@@ -304,6 +242,7 @@ async function runPrompt() {
   }
 }
 
+function clearLog() { document.getElementById("logArea").innerHTML = ""; }
 </script>
 </body>
 </html>
