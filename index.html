@@ -87,38 +87,13 @@ button{padding:8px 20px;background:#00ff41;color:#0a0a0a;border:none;cursor:poin
   <div class="panel">
     <h2>LEAN 4 GATE</h2>
     <div class="mono small">
-      Browser Static Gate: <span class="green">ACTIVE</span><br>
-      Local Lean Gate: <span id="leanLocalStatus" class="amber">CLICK TO CONNECT</span><br>
-      Kernel Proof Authority: <span id="leanProofStatus" class="grey">NOT VERIFIED</span>
+      Browser Static Gate: <span class="green">ACTIVE</span>
     </div>
     <textarea id="leanSource" placeholder="Paste Lean 4 source..."></textarea>
     <div style="display:flex;gap:8px;margin-top:8px">
-      <button onclick="scanLean()" style="padding:6px 16px;font-size:11px">Browser Scan</button>
-      <button onclick="runLocalLean()" style="padding:6px 16px;font-size:11px;background:#ffb000;color:#0a0a0a">Local Lean Gate</button>
+      <button onclick="scanLean()" style="padding:6px 16px;font-size:11px">Scan Source</button>
     </div>
     <div id="leanResults" style="margin-top:10px;border-top:1px solid #333;padding-top:8px"></div>
-  </div>
-</div>
-
-<!-- ERE-5 + LOCAL GATES -->
-<div class="row">
-  <div class="panel">
-    <h2>ERE-5 FIVE-PASS GATE</h2>
-    <div class="mono small">
-      Engine: <span class="green">SWI-Prolog / Local</span><br>
-      <span id="ereStatus">Click to run five-pass validation.</span>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <input id="ereInput" value="test_input" style="flex:1;padding:6px 8px;background:#0a0a0a;color:#00ff41;border:1px solid #333;font-family:monospace;font-size:12px">
-      <button onclick="runERE5()" style="padding:6px 16px;font-size:11px;background:#ffb000;color:#0a0a0a">Run ERE-5</button>
-    </div>
-    <div id="ereResults" style="margin-top:10px;border-top:1px solid #333;padding-top:8px"></div>
-  </div>
-  <div class="panel">
-    <h2>SYSTEM STATUS</h2>
-    <div class="mono small" id="systemStatus">
-      Checking connections...
-    </div>
   </div>
 </div>
 
@@ -329,91 +304,6 @@ async function runPrompt() {
   }
 }
 
-// ===== LOCAL LEAN GATE =====
-async function runLocalLean() {
-  const el = document.getElementById("leanResults");
-  el.innerHTML = '<span class="amber">Running lake build + scanning...</span>';
-  document.getElementById("leanLocalStatus").innerHTML = '<span class="amber">RUNNING</span>';
-  try {
-    const r = await fetch("/api/lean", { method: "POST", headers: {"Content-Type":"application/json"}, body: "{}" });
-    const data = await r.json();
-    const statusCls = data.status === "PROVED" ? "green" : data.status === "SPEC" ? "amber" : "red";
-    let html = `<div class="mono small">`;
-    html += `Status: <span class="${statusCls}" style="font-weight:bold">${data.status}</span><br>`;
-    html += `Build: ${data.build?.ok ? '<span class="green">OK</span>' : '<span class="red">FAILED</span>'}<br>`;
-    html += `Proof debt: sorry=<span class="${data.scan?.sorry ? 'amber' : 'green'}">${data.scan?.sorry}</span> `;
-    html += `admit=<span class="${data.scan?.admit ? 'amber' : 'green'}">${data.scan?.admit}</span> `;
-    html += `axiom=<span class="${data.scan?.axiom ? 'amber' : 'green'}">${data.scan?.axiom}</span> `;
-    html += `opaque=<span class="${data.scan?.opaque ? 'amber' : 'green'}">${data.scan?.opaque}</span>`;
-    html += `</div>`;
-    if (data.build?.stderr) html += `<pre style="font-size:10px;color:#666;margin-top:8px;max-height:100px;overflow:auto">${data.build.stderr.slice(0,500)}</pre>`;
-    if (data.scan?.raw) html += `<pre style="font-size:10px;color:#ffb000;margin-top:4px;max-height:100px;overflow:auto">${data.scan.raw.slice(0,500)}</pre>`;
-    el.innerHTML = html;
-    document.getElementById("leanLocalStatus").innerHTML = `<span class="green">CONNECTED</span>`;
-    document.getElementById("leanProofStatus").innerHTML = `<span class="${statusCls}">${data.status}</span>`;
-  } catch (e) {
-    el.innerHTML = `<span class="red">ERROR: ${e.message}</span>`;
-    document.getElementById("leanLocalStatus").innerHTML = '<span class="red">ERROR</span>';
-  }
-}
-
-// ===== ERE-5 FIVE-PASS GATE =====
-async function runERE5() {
-  const input = document.getElementById("ereInput").value || "test_input";
-  const el = document.getElementById("ereResults");
-  el.innerHTML = '<span class="amber">Running five-pass validation...</span>';
-  document.getElementById("ereStatus").innerHTML = '<span class="amber">RUNNING</span>';
-  try {
-    const r = await fetch("/api/ere", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ input })
-    });
-    const data = await r.json();
-    const statusCls = data.pass ? "green" : "red";
-    let html = `<div class="mono small">`;
-    html += `Input: <span class="green">${data.input}</span><br>`;
-    html += `Result: <span class="${statusCls}" style="font-weight:bold">${data.pass ? "ALL PASS" : "FAILED"}</span><br>`;
-    html += `Passes: `;
-    const labels = ["structural", "scholarly", "invariants", "mission", "root"];
-    data.results.forEach((r, i) => {
-      const cls = r === "pass" ? "green" : "red";
-      html += `<span class="${cls}">${labels[i] || i}=${r}</span> `;
-    });
-    html += `</div>`;
-    if (data.error) html += `<div class="red" style="font-size:10px;margin-top:4px">${data.error}</div>`;
-    el.innerHTML = html;
-    document.getElementById("ereStatus").innerHTML = `<span class="${statusCls}">${data.pass ? "ALL PASS" : "FAILED"}</span>`;
-  } catch (e) {
-    el.innerHTML = `<span class="red">ERROR: ${e.message}</span>`;
-    document.getElementById("ereStatus").innerHTML = '<span class="red">ERROR</span>';
-  }
-}
-
-// ===== SYSTEM STATUS =====
-async function checkSystemStatus() {
-  const el = document.getElementById("systemStatus");
-  let html = "";
-  try {
-    const r = await fetch("/api/ollama/test");
-    const d = await r.json();
-    html += `Ollama: <span class="${d.online ? 'green' : 'red'}">${d.online ? 'ONLINE' : 'OFFLINE'}</span><br>`;
-    if (d.models?.length) html += `Models: <span class="green">${d.models.join(", ")}</span><br>`;
-  } catch {
-    html += `Ollama: <span class="red">UNREACHABLE</span><br>`;
-  }
-  try {
-    const r = await fetch("/api/ere", { method: "POST", headers: {"Content-Type":"application/json"}, body: '{"input":"test_input"}' });
-    const d = await r.json();
-    html += `SWI-Prolog: <span class="${d.pass !== undefined ? 'green' : 'red'}">${d.pass !== undefined ? 'CONNECTED' : 'ERROR'}</span><br>`;
-  } catch {
-    html += `SWI-Prolog: <span class="red">UNREACHABLE</span><br>`;
-  }
-  html += `Browser Prolog Gate: <span class="green">ACTIVE</span><br>`;
-  html += `Browser Lean Scan: <span class="green">ACTIVE</span>`;
-  el.innerHTML = html;
-}
-checkSystemStatus();
 </script>
 </body>
 </html>
