@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SnapKitty Harness</title>
-<script src="https://cdn.jsdelivr.net/npm/tau-prolog@0.3.4/modules/core.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:monospace;background:#0a0a0a;color:#00ff41;padding:12px}
@@ -233,7 +232,9 @@ async function queryProlog(q) {
     s.query(q);
     s.answer((ans) => {
       const str = pl.format_answer(ans);
-      resolve(str === "true" || (str.includes("true") && !str.includes("error")));
+      const isFalse = str === "false";
+      const isError = str.includes("error") || str.includes("exception");
+      resolve(!isFalse && !isError);
     });
   });
 }
@@ -377,6 +378,13 @@ async function runPrompt() {
     addLog("ERROR: " + e.message);
     document.getElementById("modelOutput").textContent = "Error: " + e.message;
   }
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/tau-prolog@0.3.4/modules/core.min.js"></script>
+<script>
+// Verify tau-prolog loaded
+if (typeof pl === "undefined") {
+  document.getElementById("logArea").innerHTML = '<div style="color:red">ERROR: tau-prolog CDN failed to load. Check internet connection.</div>';
 }
 </script>
 </body>
