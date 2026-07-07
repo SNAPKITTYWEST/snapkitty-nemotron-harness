@@ -7,9 +7,12 @@ import SyscallTrace from "./components/SyscallTrace";
 import ToolOutput from "./components/ToolOutput";
 import ReceiptDrawer from "./components/ReceiptDrawer";
 import ReplayPanel from "./components/ReplayPanel";
+import PolicyGatePanel from "./components/PolicyGatePanel";
+import LeanGatePanel from "./components/LeanGatePanel";
 import { callOllama } from "./lib/api";
 import { extractSyscalls } from "./lib/syscall";
 import { sha256, type HarnessReceipt } from "./lib/receipt";
+import type { SyscallGateResult } from "./gates/prologGate";
 
 export interface ToolResult {
   name: string;
@@ -46,6 +49,7 @@ export default function App() {
   const [tools, setTools] = useState<ToolConfig>({
     lean4: true, prolog: true, tavily: false, google: false, curl: false, bash: false,
   });
+  const [policyResults, setPolicyResults] = useState<SyscallGateResult[]>([]);
 
   const onRun = useCallback((r: RunResult) => {
     setResult(r);
@@ -72,7 +76,13 @@ export default function App() {
         <PromptConsole
           modelUrl={modelUrl} modelName={modelName} tools={tools as unknown as Record<string, boolean>}
           onRun={onRun}
+          onPolicyGate={setPolicyResults}
         />
+      </div>
+
+      <div style={{ ...G2, marginBottom: 12 }}>
+        <div style={P}><PolicyGatePanel results={policyResults} engine="tau-prolog" mode="browser" /></div>
+        <div style={P}><LeanGatePanel /></div>
       </div>
 
       <div style={{ ...G2, marginBottom: 12 }}>

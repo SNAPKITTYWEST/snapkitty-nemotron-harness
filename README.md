@@ -4,7 +4,17 @@ A deterministic local harness for running Nemotron/Ollama as a governed agent wi
 
 This is not a chatbot wrapper.
 
-Nemotron reasons. EmojiCode sets the posture. Lean verifies. Prolog gates. Tools execute only by syscall. The receipt decides.
+Nemotron reasons. EmojiCode sets posture. Tau Prolog gates the browser. SWI-Prolog gates the machine. Lean verifies proof status. Tools execute only by syscall. The receipt decides.
+
+## Why Prolog Is Inside the Harness
+
+The model is not trusted to enforce its own rules.
+
+Early harness experiments showed that model-only policy enforcement could hallucinate status, confuse proof categories, or ask clarification questions instead of executing bounded steps.
+
+The Prolog gate exists to remove policy authority from the LLM.
+
+The LLM emits intent. The Prolog gate validates authority. The receipt records the outcome.
 
 ## What This Is
 
@@ -34,48 +44,167 @@ persona → EmojiCode/costring control → search tools → curl/bash execution
 
 ## Full Stack Architecture
 
-```
-User / IDE
-  ↓
-SnapKitty Persona Layer
-  - EmojiCode behavior map
-  - executor mode
-  - clarification-drag suppression
-  - PROVED / WITNESSED / SPEC / OBLIGATION discipline
+### Browser / GitHub Pages Mode
 
+```
+User Prompt
+  ↓
+EmojiCode Persona Layer
+  ↓
+Nemotron-compatible prompt shell
+  ↓
+Co-string syscall extraction
+  ↓
+Tau Prolog / WASM FFI policy gate
+  ↓
+Lean 4 browser static gate (scan only)
+  ↓
+Receipt simulation / hash preview
+  ↓
+Replay panel
+```
+
+### Local Harness Mode
+
+```
+User Prompt
   ↓
 Nemotron / Ollama
-  - local reasoning engine
-  - deterministic generation settings
-  - no authority by default
-
   ↓
-Co-String Syscall Layer
-  - <|lean_gate|>
-  - <|prolog_gate|>
-  - <|tavily_search|>
-  - <|google_search|>
-  - <|curl_fetch|>
-  - <|bash_exec|>
-  - <|worm_seal_required|>
-
+Co-string syscall extraction
   ↓
-Tool Gate Layer
-  - Lean 4 theorem check
-  - Prolog policy validation
-  - search result quarantine
-  - curl allowlist
-  - bash sandbox
-
+SWI-Prolog policy gate
   ↓
-Receipt Layer
-  - prompt hash
-  - output hash
-  - tool-call hash
-  - search-source hash
-  - build-result hash
-  - WORM receipt
+Lean 4 build gate (lake build)
+  ↓
+Controlled curl / bash / search
+  ↓
+SHA-256/BLAKE3 receipt
+  ↓
+Replay + audit bundle
 ```
+
+## Prolog Gate Modes
+
+The harness supports two Prolog policy-gate modes.
+
+### Browser Gate: Tau Prolog / WASM FFI
+
+The browser gate runs policy checks inside the frontend. This allows the GitHub Pages demo to validate syscall tokens, persona state, and basic execution policy without a server.
+
+Use cases:
+
+- syscall allow/deny checks
+- EmojiCode persona validation
+- executor-mode enforcement
+- clarification-drag suppression
+- retrieval quarantine labels
+- receipt-required decisions
+
+### Local Gate: SWI-Prolog / Native Runtime
+
+The local gate is used for stronger desktop workflows. It may call local files, build tools, Lean scans, shell commands, and receipt writers.
+
+Use cases:
+
+- `lake build`
+- `sorry/admit/axiom/opaque` scanning
+- local receipt sealing
+- workspace file checks
+- build/test command approval
+- stronger ERE-5 policy validation
+
+The browser gate demonstrates the law. The local gate enforces the law against the machine.
+
+## Prolog Kernel Example
+
+```prolog
+%% syscall policy
+
+allowed_syscall(lean_gate).
+allowed_syscall(prolog_gate).
+allowed_syscall(receipt_seal).
+allowed_syscall(file_read).
+allowed_syscall(build_check).
+
+dangerous_syscall(bash_exec).
+dangerous_syscall(curl_fetch).
+dangerous_syscall(file_write).
+
+requires_approval(bash_exec).
+requires_approval(curl_fetch).
+requires_approval(file_write).
+
+requires_receipt(lean_gate).
+requires_receipt(prolog_gate).
+requires_receipt(build_check).
+requires_receipt(receipt_seal).
+
+valid_syscall(S) :-
+    allowed_syscall(S).
+
+valid_syscall(S) :-
+    dangerous_syscall(S),
+    requires_approval(S).
+
+must_seal(S) :-
+    requires_receipt(S).
+```
+
+## Lean 4 Gate Modes
+
+The harness supports three Lean gate levels.
+
+### 1. Browser Static Gate
+
+Runs entirely in the browser.
+
+This mode scans Lean files for proof-debt markers:
+
+- `sorry`
+- `admit`
+- `axiom`
+- `opaque`
+
+It can classify a file as `CLEAN_SCAN`, `SPEC`, or `WARNING`.
+
+It does not claim `PROVED`, because the browser static gate does not run the Lean kernel.
+
+### 2. Local Lean Gate
+
+Runs on the user's machine.
+
+This mode executes:
+
+```bash
+lake build
+rg -n "\bsorry\b|\badmit\b|\baxiom\b|\bopaque\b" .
+```
+
+Only the Local Lean Gate may promote a theorem to `PROVED`.
+
+### 3. Experimental WASM Lean Gate
+
+Future mode. This would require a browser-runnable Lean checker or Lean-compatible verification core compiled to WebAssembly. Until that exists in the harness, browser mode remains a static gate.
+
+## Lean Gate Rule
+
+```
+Nemotron may request <|lean_gate|>.
+
+Browser Static Gate may return:
+- CLEAN_SCAN
+- SPEC
+- WARNING
+
+Only Local Lean Gate may return:
+- PROVED
+- SPEC
+- FAILED
+- OBLIGATION
+```
+
+The browser gate can inspect. The local gate can verify.
 
 ## Extended Syscall Tokens
 
@@ -99,25 +228,6 @@ Receipt Layer
 | `<\|build_receipt\|>` | Build step produces an auditable artifact | Receipt gate |
 | `<\|reject_unsealed\|>` | Input is unsealed and must be rejected | Policy gate |
 | `<\|executor_mode\|>` | Operating in executor mode (no clarification) | Persona gate |
-
-## Lean 4 Gate
-
-The Lean 4 gate is used for theorem-status verification.
-
-It classifies proof artifacts as:
-
-- `PROVED` — `lake build` succeeds and no `sorry`, `admit`, unchecked `axiom`, or unchecked `opaque` is present.
-- `SPEC` — theorem statement exists but proof debt remains.
-- `OBLIGATION` — claim depends on external verifier, runtime bridge, cryptographic assumption, or simulator.
-
-Example command:
-
-```bash
-lake build
-rg -n "\bsorry\b|\badmit\b|\baxiom\b|\bopaque\b" .
-```
-
-The harness never allows Nemotron to call something "proved" unless the Lean gate agrees.
 
 ## EmojiCode Persona Layer
 
@@ -165,52 +275,41 @@ The model may read search results. The model may not silently promote search res
 
 ### Browser Demo Mode
 
-Runs on GitHub Pages. This mode demonstrates prompt flow, syscall extraction, and receipt visualization. It does not execute local bash commands or access private API keys.
+Runs on GitHub Pages.
+
+- Tau Prolog WASM policy gate
+- Lean 4 browser static gate (scan only)
+- Syscall extraction
+- Receipt preview
+- Replay hash demo
+
+Does not execute local bash commands, access private API keys, or run `lake build`.
 
 ### Local Harness Mode
 
-Runs on the user's machine. This mode enables Ollama, Lean 4 checks, Prolog gates, controlled search, curl fetches, bash execution, and receipt writing.
+Runs on the user's machine.
+
+- Ollama/Nemotron
+- SWI-Prolog policy gate
+- Lean 4 build gate (`lake build`)
+- Controlled search
+- Controlled curl
+- Sandboxed bash
+- SHA-256/BLAKE3 receipts
+- Deterministic replay
 
 Dangerous tools are disabled by default and must be explicitly enabled.
 
-## Bash Safety
-
-Bash execution is disabled by default.
-
-When enabled, bash runs in workspace-only mode and requires confirmation.
-
-Denied by default:
-
-- `rm -rf`
-- `sudo`
-- credential reads
-- private key reads
-- destructive git commands
-- system package changes
-- commands outside the workspace
-
-The harness is not a remote shell. It is a controlled local build tool.
-
-## Curl / Fetch Safety
-
-Curl-style fetches are disabled by default.
-
-When enabled:
-
-- GET is allowed by default
-- POST requires approval
-- private IP ranges are blocked unless explicitly enabled
-- response bodies are marked `RETRIEVAL_UNTRUSTED`
-- fetched content is hashed and attached to the receipt
-
 ## Features
 
+- Tau Prolog WASM policy gate (browser-native)
+- Lean 4 browser static gate (scan-only)
+- Local SWI-Prolog gate
+- Local Lean 4 build gate
 - Local Ollama/Nemotron support
 - EmojiCode persona layer
 - Executor-mode system prompt
 - Co-string syscall parser
-- Lean 4 theorem gate
-- Prolog validation layer
 - Controlled search retrieval
 - Sandboxed shell execution
 - SHA-256/BLAKE3 receipts
@@ -263,6 +362,8 @@ Questions are expensive. Execution is default. Uncertainty gets classified, not 
 
 **OBLIGATION**: External verifier, crypto assumption, simulator, runtime bridge, or manual receipt required.
 
+**CLEAN_SCAN**: Browser static gate found no proof-debt markers. Not the same as PROVED.
+
 ## Claim Boundary
 
 This harness does not prove model outputs are correct.
@@ -272,23 +373,17 @@ It provides a deterministic workflow for routing model outputs through policy ga
 ## Roadmap
 
 ```
-v0.1 — Current shell
-  prompt console, syscall extraction, receipt display
+v0.2 — WASM Prolog + Lean Static Gate (current)
+  Tau Prolog browser gate, Lean 4 scan-only gate, Policy Gate Panel, Lean Gate Panel
 
-v0.2 — Persona + EmojiCode
-  persona editor, EmojiCode mode, executor-mode presets
+v0.3 — Local Lean Gate
+  lake build + scanner, real PROVED/SPEC classification
 
-v0.3 — Lean + Prolog gates
-  run lake build, scan sorry/admit/axiom/opaque, Prolog policy gate
+v0.4 — GitHub Action Lean Gate
+  remote CI receipt, shareable verification badge
 
-v0.4 — Search tools
-  Tavily search, Google search, search result quarantine, source hash receipts
-
-v0.5 — Curl + Bash
-  controlled curl, sandboxed bash, approval modal, tool-output receipts
-
-v0.6 — Harness for others
-  template library, export receipt bundle, replay mode, MIT release
+v0.5 — Experimental Lean WASM Checker
+  small proof-kernel verification in browser
 ```
 
 ## MIT License

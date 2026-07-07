@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { callOllama, runLean, runProlog, runBash, runSearch } from "../lib/api";
+import { callOllama, runLean, runBash, runSearch } from "../lib/api";
 import { extractSyscalls } from "../lib/syscall";
+import { validateSyscallsWasm } from "../gates/prologGate";
 import { sha256, type HarnessReceipt } from "../lib/receipt";
 import type { RunResult, ToolResult } from "../App";
 
@@ -12,13 +13,16 @@ const TEMPLATES = [
   { name: "🧾 Full Pipeline", prompt: "🤖⚙️🧾 Run a full pipeline: search for context, classify theorems, build, seal receipt. Do not ask questions." },
 ];
 
+import type { SyscallGateResult } from "../gates/prologGate";
+
 interface Props {
   modelUrl: string; modelName: string;
   tools: Record<string, boolean>;
   onRun: (r: RunResult) => void;
+  onPolicyGate?: (results: SyscallGateResult[]) => void;
 }
 
-export default function PromptConsole({ modelUrl, modelName, tools, onRun }: Props) {
+export default function PromptConsole({ modelUrl, modelName, tools, onRun, onPolicyGate }: Props) {
   const [prompt, setPrompt] = useState("");
   const [running, setRunning] = useState(false);
   const [log, setLog] = useState<string[]>([]);
@@ -54,11 +58,12 @@ export default function PromptConsole({ modelUrl, modelName, tools, onRun }: Pro
         addLog(`Lean: ${leanResult.status}`);
       }
 
-      if (syscalls.includes("prolog_gate") && tools.prolog) {
-        addLog("Running Prolog gate...");
-        const prologResult = await runProlog("true");
-        toolResults.push({ name: "prolog", status: prologResult.success ? "PASS" : "FAIL", output: prologResult });
-        addLog(`Prolog: ${prologResult.success ? "PASS" : "FAIL"}`);
+      if (tools.prolog) {
+        addLog("Running Prolog gate (WASM)...");
+        const prologResult = await validateSyscallsWasm(syscalls);
+        toolResults.push({ name: "prolog", status: prologResult.valid ? "PASS" : "FAIL", output: prologResult });
+        addLog(`Prolog: ${prologResult.valid ? "PASS" : "FAIL"}`);
+        onPolicyGate?.(prologResult.details);
       }
 
       if (syscalls.includes("tavily_search") && tools.tavily) {

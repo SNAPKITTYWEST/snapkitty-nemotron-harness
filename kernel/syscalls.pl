@@ -22,5 +22,12 @@ requires_approval(bash_exec).
 requires_approval(curl_fetch).
 requires_approval(file_write).
 
+requires_receipt(lean_gate).
+requires_receipt(prolog_gate).
+requires_receipt(build_check).
+requires_receipt(receipt_seal).
+requires_receipt(worm_seal_required).
+
 valid_syscall(S) :- allowed_syscall(S).
-valid_execution(Syscalls) :- forall(member(S, Syscalls), valid_syscall(S)).
+valid_execution([]).
+valid_execution([S|Rest]) :- valid_syscall(S), valid_execution(Rest).
