@@ -3,166 +3,157 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SnapKitty Harness — Constitutional AI</title>
+<title>SnapKitty Nemotron Harness</title>
 <style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --dim: #8b949e;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --amber: #d29922;
+  --red: #f85149;
+  --font: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:monospace;background:#0a0a0a;color:#00ff41;padding:12px}
-h1{font-size:20px;letter-spacing:2px;text-align:center;margin-bottom:4px;border-bottom:1px solid #00ff41;padding-bottom:12px}
-.sub{color:#666;font-size:11px;text-align:center;margin-bottom:16px}
-.panel{border:1px solid #00ff41;border-radius:4px;padding:16px;background:#0d0d0d;margin-bottom:12px}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
-textarea{width:100%;padding:6px 8px;background:#0a0a0a;color:#00ff41;border:1px solid #333;font-family:monospace;font-size:12px;height:80px;resize:vertical}
-button{padding:8px 20px;background:#00ff41;color:#0a0a0a;border:none;cursor:pointer;font-family:monospace;font-weight:bold;font-size:12px}
-button.secondary{background:#333;color:#00ff41}
-.mono{font-family:monospace;font-size:11px}
-.small{font-size:10px;color:#666}
-.green{color:#00ff41}
-.amber{color:#ffb000}
-.red{color:#ff4444}
-.grey{color:#666}
-pre{font-size:11px;color:#999;white-space:pre-wrap;max-height:300px;overflow:auto}
+body{background:var(--bg);color:var(--text);font-family:var(--font);padding:24px;max-width:960px;margin:0 auto}
+h1{font-size:18px;font-weight:600;letter-spacing:0.5px;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:8px}
+.sub{color:var(--dim);font-size:12px;margin-bottom:20px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+label{font-size:11px;color:var(--dim);display:block;margin-bottom:4px}
+textarea,input{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-family:var(--font);font-size:13px}
+textarea{height:80px;resize:vertical;line-height:1.5}
+button{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 20px;font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer}
+button:hover{opacity:0.9}
+pre{font-size:12px;line-height:1.6;color:var(--text);white-space:pre-wrap;max-height:400px;overflow:auto;margin:0}
+.mono{font-family:var(--font);font-size:12px}
+.green{color:var(--green)}
+.amber{color:var(--amber)}
+.red{color:var(--red)}
+.dim{color:var(--dim)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.stat{font-size:11px;padding:2px 0}
+.badge{display:inline-block;padding:1px 8px;border-radius:4px;font-size:10px;font-weight:500}
+.badge.green{background:#1a3a2a;color:var(--green)}
+.badge.amber{background:#2d2410;color:var(--amber)}
+.badge.red{background:#3a1a1a;color:var(--red)}
+.tok{color:var(--accent)}
 </style>
 </head>
 <body>
-<h1>SNAPKITTY HARNESS</h1>
-<p class="sub">Constitutional AI. Model generates within constitution. Axioms execute through gates. Receipt seals.</p>
+<h1>SNAPKITTY NEMOTRON HARNESS</h1>
+<p class="sub">Constitutional AI · Axiom-enforced · WORM-sealed</p>
 
-<div class="row">
+<div class="grid">
   <div class="panel">
-    <h2>MODEL</h2>
-    <div class="mono small">snapkitty-nemotron <span class="green">(constitutional)</span></div>
-    <button class="secondary" style="margin-top:8px" onclick="switchRaw()">vs raw nemotron-mini</button>
+    <div class="dim" style="font-size:11px;margin-bottom:4px">MODEL</div>
+    <div style="font-size:13px">snapkitty-nemotron</div>
+    <div style="font-size:11px;color:var(--green);margin-top:2px">constitutional AI</div>
   </div>
   <div class="panel">
-    <h2>AXIOMS</h2>
-    <div id="axiomStatus" class="mono small">Loading...</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div><div class="dim" style="font-size:11px">MODE</div><div style="font-size:13px">executor</div></div>
+      <div><div class="dim" style="font-size:11px">ROLE</div><div style="font-size:13px">untrusted compute</div></div>
+      <div><div class="dim" style="font-size:11px">AXIOMS</div><div style="font-size:13px"><span id="axiomCount" class="green">7</span></div></div>
+    </div>
   </div>
 </div>
 
 <div class="panel">
-  <textarea id="promptInput" placeholder="Enter task..."></textarea>
-  <div style="display:flex;gap:8px;margin-top:8px">
+  <label>Prompt</label>
+  <textarea id="promptInput" placeholder="Enter a task for the model..."></textarea>
+  <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
     <button onclick="runPrompt()">Run</button>
+    <span id="status" class="dim" style="font-size:12px"></span>
   </div>
 </div>
 
-<div class="row">
+<div class="panel">
+  <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+    <div style="font-size:13px;font-weight:500">Model Output</div>
+    <div id="gateDisplay" class="dim" style="font-size:11px"></div>
+  </div>
+  <pre id="modelOutput" style="min-height:60px">Run a prompt to see output.</pre>
+</div>
+
+<div id="resultsArea" style="display:none">
+  <div class="grid">
+    <div class="panel">
+      <div style="font-size:13px;font-weight:500;margin-bottom:8px">Syscalls</div>
+      <div id="syscallList" class="mono"></div>
+    </div>
+    <div class="panel">
+      <div style="font-size:13px;font-weight:500;margin-bottom:8px">Axiom Execution</div>
+      <div id="axiomList" class="mono"></div>
+    </div>
+  </div>
+
   <div class="panel">
-    <h2>MODEL OUTPUT</h2>
-    <pre id="modelOutput">No output yet.</pre>
+    <div style="font-size:13px;font-weight:500;margin-bottom:8px">Receipt</div>
+    <div id="receiptDisplay" class="mono" style="font-size:11px;line-height:1.8"></div>
   </div>
-  <div class="panel">
-    <h2>RAW REFERENCE</h2>
-    <pre id="rawOutput">(same prompt, no constitution)</pre>
-  </div>
-</div>
-
-<div class="panel">
-  <h2>SYSCALLS & GATE</h2>
-  <div id="syscallResult" class="mono small">No syscalls detected.</div>
-</div>
-
-<div class="panel">
-  <h2>AXIOM EXECUTION</h2>
-  <div id="axiomResult" class="mono small">Axioms not yet executed.</div>
-</div>
-
-<div class="panel">
-  <h2>RECEIPT</h2>
-  <div id="receiptInfo" class="mono small">No receipt yet.</div>
-</div>
-
-<div class="panel">
-  <h2>CONSTITUTION</h2>
-  <div id="constitutionText" class="mono small">Loading...</div>
 </div>
 
 <script>
-let rawMode = false;
-
-async function loadConstitution() {
-  const r = await fetch("/api/trust-deed");
-  const td = await r.json();
-  let html = `<div class="green">Model Role: ${td.model_role}</div>`;
-  html += `<div class="green">Default Mode: ${td.default_mode}</div>`;
-  td.core_rules && Object.entries(td.core_rules).forEach(([k,v]) => {
-    html += `<div>${k}: <span class="${v ? 'green' : 'red'}">${v}</span></div>`;
-  });
-  html += `<div style="margin-top:8px;border-top:1px solid #333;padding-top:8px">`;
-  td.axioms && td.axioms.forEach(a => {
-    html += `<div><span class="amber">${a.id}</span> <span class="grey">${a.description}</span> [${a.gate}]</div>`;
-  });
-  html += `</div>`;
-  document.getElementById("constitutionText").innerHTML = html;
-
-  // Show axiom status
-  let ahtml = `<div>${td.axioms.length} axioms loaded</div>`;
-  td.axioms.forEach(a => {
-    ahtml += `<div><span class="grey">${a.id}</span> → <span class="amber">${a.gate}</span></div>`;
-  });
-  document.getElementById("axiomStatus").innerHTML = ahtml;
-}
-loadConstitution();
-
-function switchRaw() {
-  rawMode = !rawMode;
-  document.querySelector("button.secondary").textContent = rawMode ? "vs constitutional snapkitty-nemotron" : "vs raw nemotron-mini";
-  document.getElementById("modelOutput").textContent = rawMode ? "Switch back to constitutional mode" : "No output yet.";
-}
-
 async function runPrompt() {
   const prompt = document.getElementById("promptInput").value.trim();
   if (!prompt) return;
-  const model = rawMode ? "nemotron-mini" : "snapkitty-nemotron";
-  document.getElementById("modelOutput").textContent = "Running...";
-  document.getElementById("rawOutput").textContent = "Running...";
+  const el = document.getElementById("modelOutput");
+  el.textContent = "Running...";
+  document.getElementById("status").textContent = "querying model...";
+  document.getElementById("resultsArea").style.display = "none";
 
   try {
-    // Constitutional model
-    const gated = await fetch("/api/ollama", {
-      method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ prompt, model })
+    const r = await fetch("/api/ollama", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ prompt, model: "snapkitty-nemotron" })
     });
-    const data = await gated.json();
-    document.getElementById("modelOutput").textContent = data.raw;
+    const data = await r.json();
 
-    // Show syscalls
+    el.textContent = data.raw;
+    document.getElementById("status").textContent = "done";
+
+    // Syscalls
+    const syscalls = data.syscalls;
     let shtml = "";
-    if (data.syscalls.detected.length === 0) {
-      shtml = '<span class="grey">No syscall tokens in output.</span>';
+    if (syscalls.detected.length === 0) {
+      shtml = '<span class="dim">No syscall tokens detected</span>';
     } else {
-      data.syscalls.gate.forEach((g: any) => {
+      syscalls.gate.forEach((g) => {
         const cls = g.verdict === "ALLOW" ? "green" : g.verdict === "APPROVAL_REQUIRED" ? "amber" : "red";
-        shtml += `<div style="display:flex;justify-content:space-between;margin-bottom:4px">`;
-        shtml += `<span class="green">&lt;|${g.syscall}|&gt;</span> <span class="${cls}">${g.verdict}</span></div>`;
+        shtml += `<div style="display:flex;justify-content:space-between;padding:3px 0">`;
+        shtml += `<span class="tok">&lt;|${g.syscall}|&gt;</span> <span class="badge ${cls}">${g.verdict}</span></div>`;
       });
     }
-    document.getElementById("syscallResult").innerHTML = shtml;
+    document.getElementById("syscallList").innerHTML = shtml;
 
-    // Show axioms
-    let ahtml = `<div>Status: <span class="${data.axioms.allPass ? 'green' : 'red'}">${data.axioms.allPass ? 'ALL PASS' : 'SOME FAILED'}</span></div>`;
-    data.axioms.results.forEach((r: any) => {
+    // Axioms
+    let ahtml = `<div style="margin-bottom:6px">Status: <span class="${data.axioms.allPass ? 'green' : 'red'}">${data.axioms.allPass ? 'ALL PASS' : 'SOME FAILED'}</span></div>`;
+    data.axioms.results.forEach((r) => {
       const cls = r.pass ? "green" : "red";
-      ahtml += `<div><span class="${cls}">${r.pass ? 'PASS' : 'FAIL'}</span> ${r.id} <span class="grey">${r.output}</span></div>`;
+      ahtml += `<div style="padding:2px 0"><span class="${cls}" style="font-weight:500">${r.pass ? 'PASS' : 'FAIL'}</span> ${r.id}</div>`;
     });
-    document.getElementById("axiomResult").innerHTML = ahtml;
+    document.getElementById("axiomList").innerHTML = ahtml;
 
     // Receipt
-    document.getElementById("receiptInfo").innerHTML = `
-      <div>ID: <span class="green">${data.receipt.id}</span></div>
-      <div>Time: ${data.receipt.timestamp}</div>
-      <div>Trust Deed: ${data.receipt.trust_deed} v${data.receipt.version}</div>
-      <div>Status: <span class="${data.receipt.status === 'ACCEPTED' ? 'green' : data.receipt.status === 'APPROVAL_REQUIRED' ? 'amber' : 'red'}">${data.receipt.status}</span></div>
-      <div>Axioms: ${data.axioms.allPass ? '<span class="green">PASS</span>' : '<span class="red">FAIL</span>'}</div>`;
+    const rc = data.receipt;
+    document.getElementById("receiptDisplay").innerHTML = `
+      <div><span class="dim">ID</span> <span class="green">${rc.id}</span></div>
+      <div><span class="dim">Time</span> ${rc.timestamp}</div>
+      <div><span class="dim">Status</span> <span class="${rc.status === 'ACCEPTED' ? 'green' : rc.status === 'APPROVAL_REQUIRED' ? 'amber' : 'red'}">${rc.status}</span></div>
+      <div><span class="dim">Trust Deed</span> ${rc.trust_deed} v${rc.version}</div>
+      <div><span class="dim">Axioms</span> ${data.axioms.allPass ? 'PASS' : 'FAIL'}</div>
+      <div><span class="dim">Syscalls</span> ${rc.syscalls.detected.length > 0 ? rc.syscalls.detected.map(s => '<|' + s + '|>').join(', ') : 'none'}</div>`;
 
-    // Raw reference
-    const raw = await fetch("/api/ollama/raw", {
-      method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ prompt })
-    });
-    const rawData = await raw.json();
-    document.getElementById("rawOutput").textContent = rawData.output;
+    document.getElementById("resultsArea").style.display = "block";
 
-  } catch (e: any) {
-    document.getElementById("modelOutput").textContent = "Error: " + e.message;
+  } catch (e) {
+    el.textContent = "Error: " + e.message;
+    document.getElementById("status").textContent = "error";
   }
 }
 </script>
