@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SnapKitty Harness — Trust Deed Enforced</title>
+<title>SnapKitty Harness — Policy Enforcement Runtime</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:monospace;background:#0a0a0a;color:#00ff41;padding:12px}
@@ -16,8 +16,6 @@ input,textarea{width:100%;padding:6px 8px;background:#0a0a0a;color:#00ff41;borde
 textarea{height:80px;resize:vertical}
 button{padding:8px 20px;background:#00ff41;color:#0a0a0a;border:none;cursor:pointer;font-family:monospace;font-weight:bold;font-size:12px}
 button:hover{background:#33ff66}
-button.approve{background:#ffb000;color:#0a0a0a}
-button.danger{background:#ff4444;color:#fff}
 button.secondary{background:#333;color:#00ff41}
 .mono{font-family:monospace;font-size:11px}
 .small{font-size:10px;color:#666}
@@ -25,12 +23,12 @@ button.secondary{background:#333;color:#00ff41}
 .amber{color:#ffb000}
 .red{color:#ff4444}
 .grey{color:#666}
-pre{font-size:11px;color:#999;white-space:pre-wrap;max-height:400px;overflow:auto}
+pre{font-size:11px;color:#999;white-space:pre-wrap;max-height:300px;overflow:auto}
 </style>
 </head>
 <body>
 <h1>SNAPKITTY HARNESS</h1>
-<p class="sub">Trust deed enforced. Gates execute. Receipts seal. Model is compute.</p>
+<p class="sub">Nemotron is compute. Trust deed is authority. Harness enforces.</p>
 
 <div class="row">
   <div class="panel">
@@ -39,71 +37,70 @@ pre{font-size:11px;color:#999;white-space:pre-wrap;max-height:400px;overflow:aut
     <input id="modelName" value="hermes3">
   </div>
   <div class="panel">
-    <h2>TRUST DEED <span class="green">(harness-side)</span></h2>
+    <h2>TRUST DEED</h2>
     <div class="mono small" id="trustDeedInfo">Loading...</div>
   </div>
 </div>
 
 <div class="panel">
   <h2>PROMPT</h2>
-  <textarea id="promptInput" placeholder="Enter task..."></textarea>
+  <textarea id="promptInput" placeholder="Enter task for nemotron..."></textarea>
   <div style="display:flex;gap:8px;margin-top:8px">
     <button onclick="runGated()">Run Gated</button>
     <button class="secondary" onclick="runRaw()">Run Raw</button>
   </div>
 </div>
 
-<div class="row">
-  <div class="panel">
-    <h2>RAW OUTPUT <span class="grey">(no harness)</span></h2>
-    <pre id="rawOutput">No output yet.</pre>
-  </div>
-  <div class="panel">
-    <h2>GATED OUTPUT <span class="green">(harness-enforced)</span></h2>
-    <pre id="gatedOutput">No output yet.</pre>
-  </div>
-</div>
-
+<!-- RAW NEMOTRON -->
 <div class="panel">
-  <h2>HARNESS ENFORCEMENT</h2>
-  <div id="harnessEnforcement" class="mono small">No enforcement yet.</div>
+  <h2>RAW NEMOTRON OUTPUT</h2>
+  <pre id="rawOutput">No output yet.</pre>
 </div>
 
+<!-- NORMALIZED INTENT -->
 <div class="panel">
-  <h2>GATE VERDICTS</h2>
-  <div id="gateResults" class="mono small">No syscalls processed yet.</div>
+  <h2>NORMALIZED INTENT</h2>
+  <div id="normalizedIntent" class="mono small">No normalized output yet.</div>
 </div>
 
-<div id="approvalQueue" class="panel" style="display:none">
-  <h2>APPROVAL REQUIRED</h2>
-  <div id="approvalItems"></div>
-</div>
-
+<!-- SYSCALLS DETECTED -->
 <div class="panel">
-  <h2>EXECUTION RESULTS</h2>
-  <div id="execResults" class="mono small">No executions yet.</div>
+  <h2>SYSCALLS DETECTED</h2>
+  <div id="syscallsDetected" class="mono small">No syscalls detected.</div>
 </div>
 
+<!-- TRUST DEED GATE -->
 <div class="panel">
-  <h2>RECEIPT <span class="green">(WORM-sealed)</span></h2>
+  <h2>TRUST DEED GATE</h2>
+  <div id="trustDeedGate" class="mono small">No gate decisions yet.</div>
+</div>
+
+<!-- ALLOWED / REJECTED / APPROVAL REQUIRED -->
+<div class="panel">
+  <h2>GATE RESULT</h2>
+  <div id="gateResult" class="mono small">No result yet.</div>
+</div>
+
+<!-- ROUTE SYSCALLS -->
+<div id="routePanel" class="panel" style="display:none">
+  <h2>ROUTING SYSCALLS</h2>
+  <div id="routeResults" class="mono small"></div>
+</div>
+
+<!-- RECEIPT -->
+<div class="panel">
+  <h2>RECEIPT</h2>
   <div id="receiptInfo" class="mono small">No receipt yet.</div>
 </div>
 
 <script>
-function extractSyscalls(text) {
-  const re = /<\|(\w+)\|>/g;
-  const found = []; let m;
-  while ((m = re.exec(text))) found.push(m[1]);
-  return [...new Set(found)];
-}
-
 async function loadTrustDeed() {
   const r = await fetch("/api/trust-deed");
   const td = await r.json();
-  let html = "";
-  Object.entries(td).forEach(([k, v]) => {
-    html += `<div>${k}: <span class="green">${v}</span></div>`;
-  });
+  let html = `<div>Authority: <span class="green">${td.authority}</span></div>`;
+  html += `<div>Model Role: <span class="green">${td.model_role}</span></div>`;
+  html += `<div>Default Mode: <span class="green">${td.default_mode}</span></div>`;
+  html += `<div>Version: <span class="green">${td.version}</span></div>`;
   document.getElementById("trustDeedInfo").innerHTML = html;
 }
 loadTrustDeed();
@@ -112,8 +109,12 @@ async function runGated() {
   const prompt = document.getElementById("promptInput").value.trim();
   if (!prompt) return;
   const model = document.getElementById("modelName").value;
-  document.getElementById("gatedOutput").textContent = "Running...";
-  document.getElementById("harnessEnforcement").innerHTML = '<span class="amber">ENFORCING...</span>';
+
+  document.getElementById("rawOutput").textContent = "Running...";
+  document.getElementById("normalizedIntent").innerHTML = "";
+  document.getElementById("syscallsDetected").innerHTML = "";
+  document.getElementById("trustDeedGate").innerHTML = "";
+  document.getElementById("gateResult").innerHTML = "";
 
   try {
     const r = await fetch("/api/ollama", {
@@ -122,80 +123,78 @@ async function runGated() {
       body: JSON.stringify({ prompt, model })
     });
     const data = await r.json();
-    document.getElementById("gatedOutput").textContent = data.output;
 
-    // Show harness enforcement
+    // 1. Raw nemotron output
+    document.getElementById("rawOutput").textContent = data.raw;
+
+    // 2. Normalized intent
     let html = "";
-    html += `<div>Structure: <span class="${data.gate.structureValid ? 'green' : 'red'}">${data.gate.structureValid ? 'VALID' : 'MISSING FIELDS'}</span></div>`;
-    html += `<div>Syscalls: <span class="green">${data.gate.syscalls.length}</span></div>`;
-    data.gate.syscalls.forEach(s => {
-      const cls = s.verdict === "ALLOWED" ? "green" : s.verdict === "APPROVAL" ? "amber" : "red";
-      html += `<div style="margin-left:16px">&lt;|${s.syscall}|&gt; → <span class="${cls}">${s.verdict}</span></div>`;
-    });
-    html += `<div>Soul: <span class="green">mood=${data.soul.mood} witLevel=${data.soul.witLevel}</span></div>`;
-    html += `<div>Transformer: <span class="green">mode=${data.transformer.mode} plasmaGate=${data.transformer.plasmaGate}</span></div>`;
-    document.getElementById("harnessEnforcement").innerHTML = html;
+    html += `<div>Decision: <span class="green">${data.normalized.decision.slice(0, 100)}...</span></div>`;
+    html += `<div>Uncertainty: <span class="${data.normalized.uncertainty === 'NONE' ? 'green' : 'amber'}">${data.normalized.uncertainty}</span></div>`;
+    html += `<div>Syscalls: <span class="green">${data.normalized.syscalls.length}</span></div>`;
+    document.getElementById("normalizedIntent").innerHTML = html;
 
-    // Gate results
-    if (data.gate.syscalls.length > 0) {
-      let ghtml = "";
-      data.gate.syscalls.forEach(s => {
-        const cls = s.verdict === "ALLOWED" ? "green" : s.verdict === "APPROVAL" ? "amber" : "red";
-        ghtml += `<div style="display:flex;justify-content:space-between;margin-bottom:4px">`;
-        ghtml += `<span class="green">&lt;|${s.syscall}|&gt;</span><span class="${cls}">${s.verdict}</span></div>`;
+    // 3. Syscalls detected
+    if (data.normalized.syscalls.length === 0) {
+      document.getElementById("syscallsDetected").innerHTML = '<span class="grey">No syscalls in output.</span>';
+    } else {
+      let shtml = "";
+      data.normalized.syscalls.forEach(s => {
+        shtml += `<div><span class="green">&lt;|${s}|&gt;</span></div>`;
       });
-      document.getElementById("gateResults").innerHTML = ghtml;
-
-      const allowed = data.gate.syscalls.filter(s => s.execute);
-      const needsApproval = data.gate.syscalls.filter(s => s.verdict === "APPROVAL");
-      const rejected = data.gate.syscalls.filter(s => s.verdict === "REJECTED");
-
-      let execHtml = "";
-      for (const s of allowed) {
-        const result = await executeSyscall(s.syscall, { command: prompt, query: prompt, url: prompt });
-        const statusCls = result.status === "EXECUTED" || result.status === "FOUND" ? "green" : "red";
-        execHtml += `<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #222">`;
-        execHtml += `<span class="green">&lt;|${s.syscall}|&gt;</span> <span class="${statusCls}">${result.status}</span><br>`;
-        if (result.stdout) execHtml += `<pre style="max-height:100px">${result.stdout.slice(0, 2000)}</pre>`;
-        if (result.results) {
-          result.results.forEach((sr, i) => {
-            execHtml += `<div class="small">${i+1}. <span class="green">${sr.title ?? sr.url ?? ""}</span></div>`;
-            if (sr.content) execHtml += `<div class="grey" style="font-size:9px">${sr.content.slice(0, 200)}</div>`;
-          });
-        }
-        execHtml += `</div>`;
-      }
-
-      if (needsApproval.length > 0) {
-        document.getElementById("approvalQueue").style.display = "block";
-        let ahtml = "";
-        needsApproval.forEach((s, i) => {
-          ahtml += `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">`;
-          ahtml += `<span class="amber">&lt;|${s.syscall}|&gt;</span>`;
-          ahtml += `<button class="approve" onclick="approveAndRun('${s.syscall}', ${i})">APPROVE</button>`;
-          ahtml += `<button class="danger" onclick="rejectCall(${i})">REJECT</button></div>`;
-        });
-        document.getElementById("approvalItems").innerHTML = ahtml;
-      }
-
-      if (rejected.length > 0) {
-        execHtml += `<div class="red" style="margin-top:8px">Blocked: ${rejected.map(s => "<|" + s.syscall + "|>").join(", ")}</div>`;
-      }
-      document.getElementById("execResults").innerHTML = execHtml || '<span class="grey">No executions.</span>';
+      document.getElementById("syscallsDetected").innerHTML = shtml;
     }
 
-    // Receipt
+    // 4. Trust deed gate
+    let ghtml = "";
+    data.gate.forEach(g => {
+      const cls = g.status === "ALLOW" ? "green" : g.status === "APPROVAL_REQUIRED" ? "amber" : "red";
+      ghtml += `<div style="display:flex;justify-content:space-between;margin-bottom:4px">`;
+      ghtml += `<span class="green">&lt;|${g.syscall}|&gt;</span>`;
+      ghtml += `<span class="${cls}">${g.status}</span>`;
+      ghtml += `<span class="grey">${g.reason}</span>`;
+      ghtml += `</div>`;
+    });
+    document.getElementById("trustDeedGate").innerHTML = ghtml;
+
+    // 5. Gate result
+    const cls = data.status === "ACCEPTED" ? "green" : data.status === "APPROVAL_REQUIRED" ? "amber" : "red";
+    document.getElementById("gateResult").innerHTML = `<div>Status: <span class="${cls}" style="font-size:16px;font-weight:bold">${data.status}</span></div>`;
+
+    // 6. Route allowed syscalls
+    const allowed = data.gate.filter(g => g.status === "ALLOW");
+    if (allowed.length > 0) {
+      document.getElementById("routePanel").style.display = "block";
+      let rhtml = "";
+      for (const g of allowed) {
+        rhtml += `<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #222">`;
+        rhtml += `<span class="green">&lt;|${g.syscall}|&gt;</span> Routing...<br>`;
+        const result = await fetch("/api/route", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ syscall: g.syscall, params: { command: prompt, query: prompt, url: prompt } })
+        });
+        const routeResult = await result.json();
+        const statusCls = routeResult.status === "EXECUTED" ? "green" : "red";
+        rhtml += `<span class="${statusCls}">${routeResult.status}</span><br>`;
+        if (routeResult.result) {
+          rhtml += `<pre style="max-height:100px">${JSON.stringify(routeResult.result, null, 2).slice(0, 2000)}</pre>`;
+        }
+        rhtml += `</div>`;
+      }
+      document.getElementById("routeResults").innerHTML = rhtml;
+    }
+
+    // 7. Receipt
     document.getElementById("receiptInfo").innerHTML = `
-      <div>ID: <span class="green">${data.receipt.id}</span></div>
+      <div>ID: <span class="green">${data.receipt.receipt_id}</span></div>
       <div>Time: ${data.receipt.timestamp}</div>
-      <div>Audit: <span class="green">${data.receipt.audit_chain}</span></div>
       <div>Trust Deed: <span class="green">${data.receipt.trust_deed_version}</span></div>
-      <div>Input hash: <span class="grey">${data.receipt.input_hash.slice(0,16)}...</span></div>
-      <div>Output hash: <span class="grey">${data.receipt.output_hash.slice(0,16)}...</span></div>
-      <div>Sealed: <span class="green">${data.receipt.sealed}</span></div>`;
+      <div>Status: <span class="${cls}">${data.receipt.status}</span></div>
+      <div>Syscalls: ${data.receipt.syscalls.join(", ") || "none"}</div>`;
 
   } catch (e) {
-    document.getElementById("gatedOutput").textContent = "Error: " + e.message;
+    document.getElementById("rawOutput").textContent = "Error: " + e.message;
   }
 }
 
@@ -211,22 +210,6 @@ async function runRaw() {
   });
   const data = await r.json();
   document.getElementById("rawOutput").textContent = data.output;
-}
-
-async function executeSyscall(syscall, params) {
-  const endpoints = {
-    bash_exec: "/api/bash", curl_fetch: "/api/curl",
-    tavily_search: "/api/search", google_search: "/api/search",
-    lean_gate: "/api/lean", prolog_gate: "/api/prolog",
-  };
-  const ep = endpoints[syscall];
-  if (!ep) return { status: "NO_ENDPOINT", syscall };
-  const r = await fetch(ep, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...params, approve: true })
-  });
-  return r.json();
 }
 </script>
 </body>
