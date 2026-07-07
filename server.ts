@@ -14,7 +14,7 @@ const deed = loadTrustDeed();
 app.post("/api/ollama", async (req, res) => {
   const { prompt, model } = req.body;
   const baseUrl = process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434";
-  const modelName = model ?? process.env.OLLAMA_MODEL ?? "hermes3";
+  const modelName = model ?? process.env.OLLAMA_MODEL ?? "nemotron-mini";
   const systemPrompt = `You are a compute resource inside the SnapKitty harness. You are not the authority.
 RULES:
 1. Do not ask clarification questions.
@@ -52,7 +52,7 @@ USER TASK: ${prompt}`;
 app.post("/api/ollama/raw", async (req, res) => {
   const { prompt, model } = req.body;
   const baseUrl = process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434";
-  const modelName = model ?? process.env.OLLAMA_MODEL ?? "hermes3";
+  const modelName = model ?? process.env.OLLAMA_MODEL ?? "nemotron-mini";
   try {
     const r = await fetch(`${baseUrl}/api/chat`, {
       method: "POST",
