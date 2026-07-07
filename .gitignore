@@ -2,3 +2,7 @@ node_modules/
 dist/
 .env
 receipts/*.json
+target/
+kernel/sovereign_crypto/target/
+*.exe
+!kernel/pl_ffi_host.exe
