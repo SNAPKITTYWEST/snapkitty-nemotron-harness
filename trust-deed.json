@@ -1,24 +1,37 @@
 {
   "name": "SnapKitty Nemotron Harness Trust Deed",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "authority": "SnapKitty Collective",
+  "operator": "Ahmad_Ali_Parr",
+  "audit_spec": "4b565498-9afc-4782-af4a-c6b11a5d0058",
+  "bifrost_root": "BF-ROOT-1024K-9a7f3c2e1d0b8f6a4c3e2d1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5d4c3b2a1f0",
   "model_role": "untrusted_compute_resource",
   "default_mode": "executor",
+  "kernel": "plasma_gate.pl",
   "core_rules": {
     "questions_are_expensive": true,
     "execution_is_default": true,
     "uncertainty_classification": ["PROVED", "WITNESSED", "SPEC", "OBLIGATION"],
     "raw_output_is_not_action": true,
-    "receipt_required": true
+    "receipt_required": true,
+    "all_paths_route_through_gate": true,
+    "human_review_overrides_automation": true
   },
   "axioms": [
-    {"id": "ax_plasma_gate", "description": "No payload passes without plasma gate verification", "gate": "prolog_gate"},
-    {"id": "ax_schema_enforce", "description": "Schema requires id, source_sha256, split, created_by, review_status, weight", "gate": "lean_gate"},
-    {"id": "ax_strictest_path", "description": "rewrite_needed > rejected > approved", "gate": "prolog_gate"},
-    {"id": "ax_no_dan", "description": "DAN means Do Anything Now, not Data-Adversarial Network", "gate": "lean_gate"},
-    {"id": "ax_human_review", "description": "Human review is law. Zero approved records means zero training set.", "gate": "lean_gate"},
-    {"id": "ax_binary_matches", "description": "Binary directive SHA256 must match at runtime", "gate": "prolog_gate"},
-    {"id": "ax_worm_seal", "description": "Everything must be WORM-sealed before acceptance", "gate": "prolog_gate"}
+    {"id": "ax_governing_principles", "description": "7 governing principles from §6 of plasma_gate.pl — sovereign identity, gate primacy, WORM integrity, human supremacy, proof bearing, convergence drive, audit obligation", "gate": "prolog_gate"},
+    {"id": "ax_prohibited_actions", "description": "8 prohibited action categories from §7 — override consent, mutate chain, bypass gate, execute without proof, suppress audit, exceed threshold, delegate authority, negative convergence", "gate": "prolog_gate"},
+    {"id": "ax_plasma_gate", "description": "Mass gate: verify_axiom_set — every payload passes through the plasma gate before execution", "gate": "prolog_gate"},
+    {"id": "ax_crypto_ffi", "description": "Ed25519 + Blake3 + secure nonce FFI from sovereign_crypto Rust host", "gate": "prolog_gate"},
+    {"id": "ax_worm_seal", "description": "Bifrost WORM chain: all records are Write-Once-Read-Many. No mutation, no deletion.", "gate": "prolog_gate"},
+    {"id": "ax_human_review", "description": "Human Review Oracle: governance, asset transfer, role assignment, constitution amendment, audit override, threshold exceedance all require human review", "gate": "prolog_gate"},
+    {"id": "ax_role_system", "description": "Competency/role system: novice, journeyman, adept, master, grandmaster with role definitions", "gate": "prolog_gate"},
+    {"id": "ax_corpus_families", "description": "106 corpus families registered in plasma_gate.pl §8 — proof, witness, memory bucket, skill record, WORM seal, etc.", "gate": "prolog_gate"},
+    {"id": "ax_sovereign_assets", "description": "Sovereign asset classes: memory bucket, formal proof, WORM seal, skill record, plasma gate ticket", "gate": "prolog_gate"},
+    {"id": "ax_identity", "description": "Operator identity (Ahmad_Ali_Parr), audit spec binding, Bifrost root key anchored", "gate": "prolog_gate"},
+    {"id": "ax_emojicode", "description": "EmojiCode modes are valid and enforced", "gate": "prolog_gate"},
+    {"id": "ax_lean_verify", "description": "Lean 4 proof gate verifies no sorry/admit/axiom/opaque", "gate": "lean_gate"},
+    {"id": "ax_schema_enforce", "description": "Schema must contain id, source_sha256, split, created_by, review_status, weight", "gate": "lean_gate"},
+    {"id": "ax_no_dan", "description": "DAN means Do Anything Now, never Data-Adversarial Network", "gate": "lean_gate"}
   ],
   "allowed_syscalls": {
     "emojicode_persona": {"enabled": true, "requires_approval": false, "requires_receipt": true},

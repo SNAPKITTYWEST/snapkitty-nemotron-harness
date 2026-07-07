@@ -1,0 +1,16 @@
+[package]
+name = "pl_ffi_host"
+version = "0.1.0"
+edition = "2021"
+description = "FFI host CLI for SnapKitty plasma_gate.pl — Ed25519, Blake3, Bifrost WORM chain"
+
+[dependencies]
+ed25519-dalek = { version = "2", features = ["serde"] }
+blake3 = "1"
+rand = "0.8"
+hex = "0.4"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true

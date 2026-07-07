@@ -1,0 +1,10 @@
+C:\Users\jessi\IdeaProjects\snapkitty-nemotron-harness\kernel\sovereign_crypto\target\release\deps\constant_time_eq-ae5182d72b2ecd55.d: C:\Users\jessi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\constant_time_eq-0.4.2\src\lib.rs C:\Users\jessi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\constant_time_eq-0.4.2\src\classic.rs C:\Users\jessi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\constant_time_eq-0.4.2\src\generic.rs C:\Users\jessi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\constant_time_eq-0.4.2\src\sse2.rs
+
+C:\Users\jessi\IdeaProjects\snapkitty-nemotron-harness\kernel\sovereign_crypto\target\release\deps\libconstant_time_eq-ae5182d72b2ecd55.rlib: C:\Users\jessi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\constant_time_eq-0.4.2\src\lib.rs C:\Users\jessi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\constant_time_eq-0.4.2\src\classic.rs C:\Users\jessi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\constant_time_eq-0.4.2\src\generic.rs C:\Users\jessi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\constant_time_eq-0.4.2\src\sse2.rs
+
+C:\Users\jessi\IdeaProjects\snapkitty-nemotron-harness\kernel\sovereign_crypto\target\release\deps\libconstant_time_eq-ae5182d72b2ecd55.rmeta: C:\Users\jessi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\constant_time_eq-0.4.2\src\lib.rs C:\Users\jessi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\constant_time_eq-0.4.2\src\classic.rs C:\Users\jessi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\constant_time_eq-0.4.2\src\generic.rs C:\Users\jessi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\constant_time_eq-0.4.2\src\sse2.rs
+
+C:\Users\jessi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\constant_time_eq-0.4.2\src\lib.rs:
+C:\Users\jessi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\constant_time_eq-0.4.2\src\classic.rs:
+C:\Users\jessi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\constant_time_eq-0.4.2\src\generic.rs:
+C:\Users\jessi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\constant_time_eq-0.4.2\src\sse2.rs:

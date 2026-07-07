@@ -22,7 +22,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);padding:24px
 h1{font-size:18px;font-weight:600;letter-spacing:0.5px;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:8px}
 .sub{color:var(--dim);font-size:12px;margin-bottom:20px}
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
 label{font-size:11px;color:var(--dim);display:block;margin-bottom:4px}
 textarea,input{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-family:var(--font);font-size:13px}
 textarea{height:80px;resize:vertical;line-height:1.5}
@@ -34,7 +34,6 @@ pre{font-size:12px;line-height:1.6;color:var(--text);white-space:pre-wrap;max-he
 .amber{color:var(--amber)}
 .red{color:var(--red)}
 .dim{color:var(--dim)}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
 .stat{font-size:11px;padding:2px 0}
 .badge{display:inline-block;padding:1px 8px;border-radius:4px;font-size:10px;font-weight:500}
 .badge.green{background:#1a3a2a;color:var(--green)}
@@ -45,7 +44,7 @@ pre{font-size:12px;line-height:1.6;color:var(--text);white-space:pre-wrap;max-he
 </head>
 <body>
 <h1>SNAPKITTY NEMOTRON HARNESS</h1>
-<p class="sub">Constitutional AI · Axiom-enforced · WORM-sealed</p>
+<p class="sub">Constitutional AI · Plasma Gate Kernel · WORM-sealed · Bifrost Audited</p>
 
 <div class="grid">
   <div class="panel">
@@ -57,7 +56,8 @@ pre{font-size:12px;line-height:1.6;color:var(--text);white-space:pre-wrap;max-he
     <div style="display:flex;gap:12px;flex-wrap:wrap">
       <div><div class="dim" style="font-size:11px">MODE</div><div style="font-size:13px">executor</div></div>
       <div><div class="dim" style="font-size:11px">ROLE</div><div style="font-size:13px">untrusted compute</div></div>
-      <div><div class="dim" style="font-size:11px">AXIOMS</div><div style="font-size:13px"><span id="axiomCount" class="green">7</span></div></div>
+      <div><div class="dim" style="font-size:11px">KERNEL</div><div style="font-size:13px;color:var(--accent)">plasma_gate.pl</div></div>
+      <div><div class="dim" style="font-size:11px">AXIOMS</div><div style="font-size:13px"><span id="axiomCount" class="green">14</span></div></div>
     </div>
   </div>
 </div>
@@ -86,7 +86,7 @@ pre{font-size:12px;line-height:1.6;color:var(--text);white-space:pre-wrap;max-he
       <div id="syscallList" class="mono"></div>
     </div>
     <div class="panel">
-      <div style="font-size:13px;font-weight:500;margin-bottom:8px">Axiom Execution</div>
+      <div style="font-size:13px;font-weight:500;margin-bottom:8px">Axiom Execution (Plasma Gate)</div>
       <div id="axiomList" class="mono"></div>
     </div>
   </div>
@@ -132,10 +132,14 @@ async function runPrompt() {
     document.getElementById("syscallList").innerHTML = shtml;
 
     // Axioms
-    let ahtml = `<div style="margin-bottom:6px">Status: <span class="${data.axioms.allPass ? 'green' : 'red'}">${data.axioms.allPass ? 'ALL PASS' : 'SOME FAILED'}</span></div>`;
-    data.axioms.results.forEach((r) => {
+    const ax = data.axioms;
+    let ahtml = `<div style="margin-bottom:6px">Status: <span class="${ax.allPass ? 'green' : 'red'}">${ax.allPass ? 'ALL PASS' : 'SOME FAILED'}</span></div>`;
+    ax.results.forEach((r) => {
       const cls = r.pass ? "green" : "red";
-      ahtml += `<div style="padding:2px 0"><span class="${cls}" style="font-weight:500">${r.pass ? 'PASS' : 'FAIL'}</span> ${r.id}</div>`;
+      const name = r.id.replace("ax_", "");
+      ahtml += `<div style="padding:3px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">`;
+      ahtml += `<span><span class="${cls}" style="font-weight:500;margin-right:6px">${r.pass ? '✓' : '✗'}</span>${name}</span>`;
+      ahtml += `<span class="dim" style="font-size:11px">${r.output}</span></div>`;
     });
     document.getElementById("axiomList").innerHTML = ahtml;
 
@@ -145,8 +149,9 @@ async function runPrompt() {
       <div><span class="dim">ID</span> <span class="green">${rc.id}</span></div>
       <div><span class="dim">Time</span> ${rc.timestamp}</div>
       <div><span class="dim">Status</span> <span class="${rc.status === 'ACCEPTED' ? 'green' : rc.status === 'APPROVAL_REQUIRED' ? 'amber' : 'red'}">${rc.status}</span></div>
+      <div><span class="dim">Kernel</span> ${rc.kernel}</div>
       <div><span class="dim">Trust Deed</span> ${rc.trust_deed} v${rc.version}</div>
-      <div><span class="dim">Axioms</span> ${data.axioms.allPass ? 'PASS' : 'FAIL'}</div>
+      <div><span class="dim">Axioms</span> ${ax.allPass ? 'PASS' : 'FAIL'} (${ax.results.filter(r => r.pass).length}/${ax.results.length})</div>
       <div><span class="dim">Syscalls</span> ${rc.syscalls.detected.length > 0 ? rc.syscalls.detected.map(s => '<|' + s + '|>').join(', ') : 'none'}</div>`;
 
     document.getElementById("resultsArea").style.display = "block";

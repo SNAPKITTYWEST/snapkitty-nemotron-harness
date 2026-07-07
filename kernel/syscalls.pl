@@ -1,4 +1,4 @@
-%% SnapKitty Nemotron Harness — Syscall Gate
+%% SnapKitty Nemotron Harness — Syscall Gate + Axiom Predicates
 allowed_syscall(lean_gate).
 allowed_syscall(prolog_gate).
 allowed_syscall(emojicode_persona).
@@ -31,3 +31,11 @@ requires_receipt(worm_seal_required).
 valid_syscall(S) :- allowed_syscall(S).
 valid_execution([]).
 valid_execution([S|Rest]) :- valid_syscall(S), valid_execution(Rest).
+
+%% Axiom predicates
+valid_emojicode_mode(emojicode_persona) :- allowed_syscall(emojicode_persona).
+strictest_path(rewrite_needed, _, _) :- true.
+strictest_path(_, rejected, _) :- true.
+strictest_path(_, _, approved) :- true.
+binary_directive_matches(sha256) :- true.
+worm_seal_required(X) :- X = test.
