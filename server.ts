@@ -142,32 +142,50 @@ app.post("/api/lean", async (req, res) => {
 // ── Prolog Gate ─────────────────────────────────────────────────────────────
 app.post("/api/prolog", async (req, res) => {
   const { query, file } = req.body;
-
-  // Try the real Prolog kernel first
-  const kernelFile = file ?? join(WORKSPACE, "snapkitty-nemotron-harness", "kernel", "syscalls.pl");
-  const ereGateFile = join(WORKSPACE, "snapkitty-nemotron-harness", "kernel", "ere_gate.pl");
+  const kernelFile = file ?? join(import.meta.dirname ?? ".", "kernel", "syscalls.pl");
 
   try {
-    // Validate syscalls via Prolog
     const q = query ?? "true";
     const { stdout, stderr } = await execFileAsync(SWIPL, [
       "-g", q,
       "-t", "halt.",
       kernelFile,
     ], { encoding: "utf8", timeout: 15_000 });
-    res.json({ success: true, output: stdout.trim() || stderr.trim(), kernel: "syscalls.pl" });
+    const output = stdout.trim() || stderr.trim();
+    res.json({ success: !output.includes("error"), output, kernel: "syscalls.pl" });
   } catch (e: any) {
-    // Fallback: try ERE gate
-    try {
-      const { stdout, stderr } = await execFileAsync(SWIPL, [
-        "-g", "ere5_all_pass(test_input)",
-        "-t", "halt.",
-        ereGateFile,
-      ], { encoding: "utf8", timeout: 15_000 });
-      res.json({ success: true, output: stdout.trim() || stderr.trim(), kernel: "ere_gate.pl" });
-    } catch (e2: any) {
-      res.json({ success: false, output: e2.message, kernel: "none" });
-    }
+    res.json({ success: false, output: e.message, kernel: "syscalls.pl" });
+  }
+});
+
+// ── ERE-5 Five-Pass Gate ────────────────────────────────────────────────────
+app.post("/api/ere", async (req, res) => {
+  const { input } = req.body;
+  const ereFile = join(import.meta.dirname ?? ".", "kernel", "ere_gate.pl");
+  const syscallsFile = join(import.meta.dirname ?? ".", "kernel", "syscalls.pl");
+
+  if (!existsSync(ereFile)) {
+    return res.json({ pass: false, error: "ere_gate.pl not found", results: [] });
+  }
+
+  const prologInput = input ?? "test_input";
+
+  try {
+    const query = `ere5_check(${prologInput}, Results), maplist( writeln, Results )`;
+    const { stdout, stderr } = await execFileAsync(SWIPL, [
+      "-g", query,
+      "-t", "halt.",
+      syscallsFile,
+      ereFile,
+    ], { encoding: "utf8", timeout: 15_000 });
+
+    const lines = (stdout + stderr).split("\n").filter((l) => l.trim());
+    const results = lines.map((l) => l.trim()).filter((l) => l.startsWith("pass") || l.startsWith("fail"));
+    const allPass = results.every((r) => r === "pass");
+
+    res.json({ pass: allPass, results, input: prologInput, kernel: "ere_gate.pl" });
+  } catch (e: any) {
+    res.json({ pass: false, error: e.message, results: [], kernel: "ere_gate.pl" });
   }
 });
 
