@@ -1,0 +1,34 @@
+{
+  "mode": "local",
+  "model": {
+    "provider": "ollama",
+    "baseUrl": "http://127.0.0.1:11434",
+    "model": "nemotron",
+    "temperature": 0,
+    "seed": 42
+  },
+  "persona": {
+    "executorMode": true,
+    "emojiCode": true,
+    "suppressClarificationDrag": true
+  },
+  "tools": {
+    "lean4": true,
+    "prolog": true,
+    "tavily": false,
+    "google": false,
+    "curl": false,
+    "bash": false
+  },
+  "security": {
+    "bashRequiresApproval": true,
+    "curlRequiresApproval": true,
+    "allowWrite": false,
+    "workspaceOnly": true
+  },
+  "receipts": {
+    "enabled": true,
+    "dir": "./receipts",
+    "hash": "sha256"
+  }
+}
