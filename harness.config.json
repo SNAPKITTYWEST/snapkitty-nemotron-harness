@@ -1,0 +1,20 @@
+{
+  "harness": {
+    "mode": "executor",
+    "determinism": {
+      "temperature": 0,
+      "top_p": 0.1,
+      "seed": 42
+    },
+    "receipts": {
+      "dir": "./receipts",
+      "algorithm": "sha256",
+      "format": "json"
+    },
+    "prolog": {
+      "enabled": true,
+      "kernel_path": "./kernel/syscalls.pl",
+      "ere_gate_path": "./kernel/ere_gate.pl"
+    }
+  }
+}
