@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
-  base: "/snapkitty-nemotron-harness/",
+  base: process.env.GITHUB_ACTIONS ? "/snapkitty-nemotron-harness/" : "/",
   server: {
     proxy: {
       "/api": "http://localhost:3001",
