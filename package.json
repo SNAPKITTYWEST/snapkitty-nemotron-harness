@@ -7,7 +7,9 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "tsx server.ts",
     "client": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "start": "tsx server.ts",
+    "test": "tsx --test tests/**/*.test.ts"
   },
   "dependencies": {
     "dotenv": "^17.4.2",

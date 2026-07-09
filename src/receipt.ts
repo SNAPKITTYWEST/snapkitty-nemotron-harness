@@ -1,8 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-
-const RECEIPTS_DIR = "receipts";
+import { join, resolve } from "node:path";
 
 export type ReceiptEntry = {
   kind: string;
@@ -16,8 +14,12 @@ export type ReceiptEntry = {
   receipt_id: string;
 };
 
-export function writeReceipt(entry: Omit<ReceiptEntry, "timestamp" | "receipt_id">): ReceiptEntry {
-  if (!existsSync(RECEIPTS_DIR)) mkdirSync(RECEIPTS_DIR, { recursive: true });
+export function writeReceipt(
+  entry: Omit<ReceiptEntry, "timestamp" | "receipt_id">,
+  options: { dir?: string } = {}
+): ReceiptEntry {
+  const receiptsDir = resolve(options.dir ?? "receipts");
+  if (!existsSync(receiptsDir)) mkdirSync(receiptsDir, { recursive: true });
 
   const ts = new Date().toISOString();
   const receiptId = createHash("sha256")
@@ -27,7 +29,7 @@ export function writeReceipt(entry: Omit<ReceiptEntry, "timestamp" | "receipt_id
 
   const receipt: ReceiptEntry = { ...entry, timestamp: ts, receipt_id: receiptId };
 
-  const filename = join(RECEIPTS_DIR, `${receiptId}.json`);
+  const filename = join(receiptsDir, `${receiptId}.json`);
   writeFileSync(filename, JSON.stringify(receipt, null, 2));
 
   return receipt;
